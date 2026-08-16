@@ -1,0 +1,10 @@
+{
+  // Tells Cloudflare that the WEBSITE is the public/ folder only.
+  // Without this it publishes the whole repository — including .git,
+  // the Python engine and the docs — as part of the site.
+  "name": "uk-pension-stress-test",
+  "compatibility_date": "2026-08-16",
+  "assets": {
+    "directory": "./public"
+  }
+}
