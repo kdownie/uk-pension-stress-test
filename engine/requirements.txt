@@ -1,0 +1,2 @@
+numpy>=1.24
+playwright>=1.40   # only needed for verify_web.py
