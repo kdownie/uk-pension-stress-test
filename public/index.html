@@ -53,18 +53,26 @@ button.ghost:hover{background:var(--surface-2)}
   border:1px solid var(--border);border-left:3px solid var(--warn);
   color:var(--ink-2);font-size:13.5px}
 .notice b{color:var(--ink)}
-.cols{display:grid;grid-template-columns:308px 1fr;gap:26px;align-items:start}
+/* The three panels are direct children of this grid and sit in DOM order:
+   situation → results → assumptions. That is already the order a phone should
+   read top-to-bottom, so mobile needs no reordering at all — it just flows.
+   Desktop places the two input panels into the left column explicitly, which
+   is what produces the two-column view.
+
+   An earlier version wrapped the input panels in a div and relied on
+   `display:contents` plus `order:` to flip them on mobile. That renders
+   correctly in Chrome but is exactly the kind of trick that fails quietly
+   elsewhere — and it did: on a phone the results still came first, answering
+   before anything had been asked, with numbers belonging to a default example
+   rather than to the visitor. Source order is the reliable version. */
+.cols{display:grid;grid-template-columns:308px minmax(0,1fr);
+  column-gap:26px;row-gap:16px;align-items:start}
+#situationPanel{grid-column:1;grid-row:1}
+#assumpPanel   {grid-column:1;grid-row:2}
+#results       {grid-column:2;grid-row:1/span 2}
 @media(max-width:860px){
-  .cols{grid-template-columns:1fr}
-  /* On a phone the page reads top-to-bottom as a conversation, so the order
-     matters: YOUR SITUATION asks the question, results answer it, and the
-     assumptions panel follows as the fine print. An earlier version put all
-     results first, which answered before anything had been asked — with
-     numbers that belonged to a default example, not the visitor. */
-  .cols > div:first-child{display:contents}
-  #situationPanel{order:-2}
-  #results{order:-1}
-  #assumpPanel{margin-top:0}
+  .cols{grid-template-columns:minmax(0,1fr);gap:16px}
+  #situationPanel,#results,#assumpPanel{grid-area:auto}
 }
 .panel{background:var(--surface-1);border:1px solid var(--border);border-radius:11px;padding:17px}
 .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;
@@ -114,6 +122,24 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
 .pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11.5px;
   background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border)}
 .busy{opacity:.45;transition:opacity .1s}
+
+/* ---- phone ----------------------------------------------------------
+   Reclaim horizontal space for the charts. Every pixel of page padding is
+   a pixel the SVG has to shrink into, and the SVG carries the axis labels,
+   so padding here is legibility there. The charts themselves are redrawn
+   at phone proportions in JS (see chartBox) rather than scaled down. */
+@media(max-width:640px){
+  .wrap{padding:20px 14px 56px}
+  .panel{padding:14px}
+  .notice{margin:16px 0 18px;font-size:13px}
+  h1{font-size:23px}
+  .hero{gap:10px;margin-bottom:14px}
+  .stat{flex:1 1 100%;padding:13px 15px}   /* full width: 2-then-1 reads as a mistake */
+  .stat .n{font-size:28px}
+  .row2{gap:8px}
+  .legend{gap:12px;font-size:12px}
+  footer{margin-top:32px}
+}
 </style>
 </head>
 <body>
@@ -143,8 +169,7 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
 
 <div class="cols">
 
-  <!-- ============ INPUTS ============ -->
-  <div>
+  <!-- ============ THE QUESTION ============ -->
     <div class="panel" id="situationPanel">
       <h2>Your situation</h2>
       <div class="row2">
@@ -227,7 +252,49 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
         single input.</p>
     </div>
 
-    <div class="panel" id="assumpPanel" style="margin-top:16px">
+  <!-- ============ RESULTS ============ -->
+  <div id="results">
+    <div class="hero">
+      <div class="stat"><span class="n" id="s_succ">—</span>
+        <span class="l">of simulations funded the full income to age <span id="s_end">95</span></span></div>
+      <div class="stat"><span class="n" id="s_safe">—</span>
+        <span class="l">income that lasted in 9 runs out of 10</span>
+        <span class="sub">after tax, today's money</span></div>
+      <div class="stat"><span class="n" id="s_dep">—</span>
+        <span class="l">typical age the pot runs dry, when it does</span>
+        <span class="sub" id="s_depsub">&nbsp;</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>What happens to the pot</h2>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--s650)"></i>Median</span>
+        <span><i class="sw" style="background:var(--s300)"></i>Middle half of outcomes</span>
+        <span><i class="sw" style="background:var(--s100)"></i>90% of outcomes</span>
+      </div>
+      <figure id="fan"></figure>
+      <p class="hint" style="margin-top:10px">Total value in today's money, including any
+        tax-free cash still unspent. Tap or hover for the numbers.
+        <span id="fanNote"></span></p>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>How long the money lasted, by income level</h2>
+      <p class="hint">The share of simulations in which the money lasted to your
+        end age, at each level of income. The ring marks the income you set.</p>
+      <figure id="curve"></figure>
+      <details><summary>Table view</summary>
+        <table id="ctab"><thead><tr><th>Income after tax</th><th>Share of runs it lasted</th></tr></thead><tbody></tbody></table>
+      </details>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>The assumptions behind this result</h2>
+      <div class="src" id="assump"></div>
+    </div>
+  </div>
+
+    <div class="panel" id="assumpPanel">
       <h2>Assumptions — argue with these</h2>
       <p class="hint">Nothing here is a fact. These are the numbers that decide the
         answer, so they belong to you, not to us.</p>
@@ -269,49 +336,6 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
       <label><span class="lbl">Simulations <span class="val" id="v_paths">4,000</span></span>
         <input type="range" id="paths" min="500" max="20000" step="500" value="4000"></label>
     </div>
-  </div>
-
-  <!-- ============ RESULTS ============ -->
-  <div id="results">
-    <div class="hero">
-      <div class="stat"><span class="n" id="s_succ">—</span>
-        <span class="l">of simulations funded the full income to age <span id="s_end">95</span></span></div>
-      <div class="stat"><span class="n" id="s_safe">—</span>
-        <span class="l">income that lasted in 9 runs out of 10</span>
-        <span class="sub">after tax, today's money</span></div>
-      <div class="stat"><span class="n" id="s_dep">—</span>
-        <span class="l">typical age the pot runs dry, when it does</span>
-        <span class="sub" id="s_depsub">&nbsp;</span></div>
-    </div>
-
-    <div class="panel">
-      <h2>What happens to the pot</h2>
-      <div class="legend">
-        <span><i class="sw" style="background:var(--s650)"></i>Median</span>
-        <span><i class="sw" style="background:var(--s300)"></i>Middle half of outcomes</span>
-        <span><i class="sw" style="background:var(--s100)"></i>90% of outcomes</span>
-      </div>
-      <figure id="fan"></figure>
-      <p class="hint" style="margin-top:10px">Total value in today's money, including any
-        tax-free cash still unspent. Hover for the numbers.
-        <span id="fanNote"></span></p>
-    </div>
-
-    <div class="panel" style="margin-top:16px">
-      <h2>How long the money lasted, by income level</h2>
-      <p class="hint">The share of simulations in which the money lasted to your
-        end age, at each level of income. The ring marks the income you set.</p>
-      <figure id="curve"></figure>
-      <details><summary>Table view</summary>
-        <table id="ctab"><thead><tr><th>Income after tax</th><th>Share of runs it lasted</th></tr></thead><tbody></tbody></table>
-      </details>
-    </div>
-
-    <div class="panel" style="margin-top:16px">
-      <h2>The assumptions behind this result</h2>
-      <div class="src" id="assump"></div>
-    </div>
-  </div>
 </div>
 
 <footer>
@@ -564,13 +588,82 @@ const gbp=n=>"£"+Math.round(n).toLocaleString("en-GB");
 const gbpShort=n=> Math.abs(n)>=1e6 ? "£"+(n/1e6).toFixed(n>=1e7?0:1)+"m"
                  : Math.abs(n)>=1000 ? "£"+Math.round(n/1000)+"k" : "£"+Math.round(n);
 const tip=$("tip");
-const showTip=(e,h)=>{tip.innerHTML=h;tip.style.opacity=1;
-  tip.style.left=Math.min(e.clientX+14,innerWidth-210)+"px";
-  tip.style.top=(e.clientY-40)+"px";};
+/* Works for both mouse and touch: a touch event carries no clientX of its own,
+   the coordinates live on touches[0]. Without this the tooltip on a phone
+   either never appears or lands in the corner. */
+const ptOf = e => (e.touches && e.touches[0]) ? e.touches[0] : e;
+const showTip=(e,h)=>{const p=ptOf(e); if(!p) return;
+  tip.innerHTML=h;tip.style.opacity=1;
+  const w=tip.offsetWidth||190;
+  tip.style.left=Math.max(6,Math.min(p.clientX+14,innerWidth-w-8))+"px";
+  // On touch the finger sits on the point, so lift the tooltip clear of it.
+  tip.style.top=Math.max(6,p.clientY-(e.touches?64:40))+"px";};
 const hideTip=()=>tip.style.opacity=0;
+/* A tap is a touchstart immediately followed by a touchend, so hiding on
+   touchend makes the tooltip flash and vanish — tapping a chart would appear
+   to do nothing. Hold it on screen briefly instead; a drag cancels the timer
+   and keeps updating. */
+let tipTimer=null;
+const cancelHold=()=>clearTimeout(tipTimer);
+const holdThenHide=fn=>{clearTimeout(tipTimer); tipTimer=setTimeout(fn,2800);};
+/* …and dismiss it on the next scroll or tap away. A tap also emits synthetic
+   mouse events afterwards, one of which lands back on the chart and cancels
+   that timer, so the timer alone would leave a tooltip stranded on screen. */
+const dismissTip=()=>{
+  cancelHold(); hideTip();
+  document.querySelectorAll("svg line.xhair").forEach(l=>l.setAttribute("opacity",0));
+};
+addEventListener("scroll",dismissTip,{passive:true});
+document.addEventListener("touchstart",e=>{
+  if(!(e.target.closest && e.target.closest("figure"))) dismissTip();
+},{passive:true,capture:true});
 const NS="http://www.w3.org/2000/svg";
 const mk=(n,a={})=>{const x=document.createElementNS(NS,n);
   for(const k in a) x.setAttribute(k,a[k]); return x;};
+/* A text node whose size is set inline, so it survives the .axis class rule.
+   Chart type has to grow on a phone: the SVG is scaled to fit the screen, so
+   an 11px label inside an 860-wide viewBox lands at about 4px on a handset. */
+const txt=(a,size)=>{const t=mk("text",a); t.style.fontSize=size+"px"; return t;};
+
+/* One place decides chart geometry.
+   The width the chart will actually occupy on screen, in CSS pixels. */
+function plotPx(){
+  const f=$("fan"), w=f?f.getBoundingClientRect().width:0;
+  return w>40 ? w : Math.max(280, innerWidth-70);
+}
+/* Threshold sits just under the desktop figure's real width (about 672px
+   inside the results panel) so the desktop chart is untouched. */
+const WIDE=660;                 // at or above this, the desktop chart is used
+const narrow = () => plotPx()<WIDE;
+
+/* Below that, the chart is drawn FLUID: one viewBox unit = one CSS pixel, so a
+   15px axis label is 15 pixels on the glass at every screen size.
+
+   Two fixed sizes — a desktop chart and a phone chart — is the obvious design
+   and it does not work. It leaves a dead band: at around 600px the desktop
+   chart is still selected and gets scaled to roughly 7px type, while the phone
+   chart would be blown up to 21px. Sizing the viewBox to the element removes
+   the band entirely, because there is nothing left to scale. */
+function chartBox(kind){
+  const px=plotPx();
+  if(px>=WIDE){                 // unchanged desktop geometry
+    return kind==="fan"
+      ? {W:860,H:470,L:66,R:22,T:16,B:42,fs:11,fsLab:12,yT:6,xT:7,
+         yDx:10,xLabY:456,nar:false}
+      : {W:860,H:250,L:52,R:24,T:14,B:42,fs:11,fsLab:12,pts:14,dot:4,
+         yDx:9,xLabY:236,nar:false};
+  }
+  const W=Math.round(Math.max(300,Math.min(px,WIDE)));
+  const tight=W<430, fs=15;
+  if(kind==="fan"){
+    const H=Math.round(Math.max(300,Math.min(W*.86,470))), B=52;
+    return {W,H,L:52,R:10,T:14,B,fs,fsLab:fs,
+            yT:tight?4:6, xT:tight?3:5, yDx:8, xLabY:H-B+fs+8, nar:true};
+  }
+  const H=Math.round(Math.max(215,Math.min(W*.62,250))), B=40;
+  return {W,H,L:44,R:14,T:12,B,fs,fsLab:fs,
+          pts:tight?10:14, dot:5, yDx:8, xLabY:H-B+fs+8, nar:true};
+}
 
 function readParams(){
   const scen=$("scen").value;
@@ -614,7 +707,7 @@ function drawFan(r,P){
   // rather than truncation — a taller plot shows the whole distribution, so
   // both the runs that empty and the runs that grow far beyond the starting
   // pot are visible at once, without either being described or commented on.
-  const W=860,H=470,L=66,R=22,T=16,B=42;
+  const {W,H,L,R,T,B,fs,fsLab,yT,xT,yDx,xLabY,nar}=chartBox("fan");
   const [q05,q25,q50,q75,q95]=quantileBands(r);
   const maxV=Math.max(Math.max(...q95), P.pot*1.1, 1);
   const X=y=>L+(y/r.years)*(W-L-R);
@@ -626,9 +719,9 @@ function drawFan(r,P){
   clip.appendChild(mk("rect",{x:L,y:T,width:W-L-R,height:H-T-B}));
   s.appendChild(clip);
 
-  niceTicks(maxV,6).forEach(v=>{
+  niceTicks(maxV,yT).forEach(v=>{
     s.appendChild(mk("line",{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:"var(--grid)","stroke-width":1}));
-    const t=mk("text",{x:L-10,y:Y(v)+4,class:"axis","text-anchor":"end"});
+    const t=txt({x:L-yDx,y:Y(v)+fs*.36,class:"axis","text-anchor":"end"},fs);
     t.textContent=gbpShort(v); s.appendChild(t);
   });
 
@@ -641,7 +734,7 @@ function drawFan(r,P){
     s.appendChild(mk("line",{x1:L,x2:W-R,y1:Y(start),y2:Y(start),
       stroke:"var(--ink-2)","stroke-width":1.5,"stroke-dasharray":"6 4",
       opacity:.75}));
-    const t=mk("text",{x:L+6,y:Y(start)-7,class:"alab"});
+    const t=txt({x:L+6,y:Y(start)-7,class:"alab"},fsLab);
     t.textContent="starting pot, "+gbpShort(start); s.appendChild(t);
   };
   const band=(a,b,fill)=>{
@@ -670,51 +763,79 @@ function drawFan(r,P){
     const xs=X(P.spAge-P.retire);
     s.appendChild(mk("line",{x1:xs,x2:xs,y1:T,y2:H-B,stroke:"var(--axis)",
       "stroke-width":1,"stroke-dasharray":"3 4"}));
-    const t=mk("text",{x:xs+5,y:T+11,class:"axis"});
+    // Flip the label to the left of the line when the line sits in the right
+    // half, or on a narrow chart the words run off the edge.
+    const flip = xs > L+(W-L-R)*.55;
+    const t=txt({x:xs+(flip?-5:5),y:T+fs,class:"axis",
+      "text-anchor":flip?"end":"start"},fs);
     t.textContent="State Pension"; s.appendChild(t);
   }
-  for(let y=0;y<=r.years;y+=Math.max(1,Math.round(r.years/7))){
-    const t=mk("text",{x:X(y),y:H-14,class:"axis","text-anchor":"middle"});
-    t.textContent="age "+(P.retire+y); s.appendChild(t);
+  // Always label the final year. A plain stride can stop short of the right
+  // edge — 35 years at a stride of 12 ends at 84 — which silently drops the
+  // one age on the axis the reader chose themselves.
+  const step=Math.max(1,Math.round(r.years/xT));
+  const ys=[]; for(let y=0;y<r.years;y+=step) ys.push(y);
+  if(r.years-ys[ys.length-1] < step*.6) ys.pop();
+  ys.push(r.years);
+  ys.forEach((y,i)=>{
+    // On a phone the end labels are anchored inward so they can't overhang.
+    const edge = nar ? (i===0?"start":i===ys.length-1?"end":"middle") : "middle";
+    const t=txt({x:X(y),y:xLabY,class:"axis","text-anchor":edge},fs);
+    t.textContent=(nar?"":"age ")+(P.retire+y); s.appendChild(t);
+  });
+  if(nar){   // the word "age" moves out of every tick and into one caption
+    const t=txt({x:(L+W-R)/2,y:H-6,class:"axis","text-anchor":"middle"},fs-1);
+    t.textContent="your age"; s.appendChild(t);
   }
   const cross=mk("line",{x1:0,x2:0,y1:T,y2:H-B,stroke:"var(--axis)",
-    "stroke-width":1,opacity:0});
+    "stroke-width":1,opacity:0,class:"xhair"});
   s.appendChild(cross);
   const hit=mk("rect",{x:L,y:T,width:W-L-R,height:H-T-B,fill:"transparent"});
-  hit.addEventListener("mousemove",e=>{
+  const probe=e=>{
+    const p=ptOf(e); if(!p) return;
+    cancelHold();
     const bb=s.getBoundingClientRect();
-    const y=Math.round(((e.clientX-bb.left)/bb.width*W-L)/(W-L-R)*r.years);
-    if(y<0||y>r.years) return;
+    let y=Math.round(((p.clientX-bb.left)/bb.width*W-L)/(W-L-R)*r.years);
+    // A finger is wider than the plot's edge, so clamp rather than bail out —
+    // dragging past either end should hold at the end, not blank the tooltip.
+    y=Math.max(0,Math.min(r.years,y));
     cross.setAttribute("x1",X(y));cross.setAttribute("x2",X(y));cross.setAttribute("opacity",1);
     showTip(e,`<b>age ${P.retire+y}</b><br>median ${gbp(q50[y])}`+
       `<br>middle half ${gbp(q25[y])} – ${gbp(q75[y])}`+
       `<br>90% range ${gbp(q05[y])} – ${gbp(q95[y])}`);
-  });
-  hit.addEventListener("mouseleave",()=>{hideTip();cross.setAttribute("opacity",0);});
+  };
+  const clear=()=>{cancelHold();hideTip();cross.setAttribute("opacity",0);};
+  hit.addEventListener("mousemove",probe);
+  hit.addEventListener("mouseleave",clear);
+  hit.addEventListener("touchstart",probe,{passive:true});
+  hit.addEventListener("touchmove",probe,{passive:true});
+  hit.addEventListener("touchend",()=>holdThenHide(clear),{passive:true});
+  hit.addEventListener("touchcancel",clear);
   s.appendChild(hit);
   $("fan").replaceChildren(s);
 }
 
 function drawCurve(P){
-  const W=860,H=250,L=52,R=24,T=14,B=42;
+  const {W,H,L,R,T,B,fs,pts:STEPS,dot,yDx,xLabY,nar}=chartBox("curve");
   const lo=5000, hi=Math.max(60000, P.target*1.6);
   const pts=[];
   const quick={...P, paths:Math.min(P.paths,2500)};
-  for(let i=0;i<=14;i++){
-    const inc=lo+(hi-lo)*i/14;
+  for(let i=0;i<=STEPS;i++){
+    const inc=lo+(hi-lo)*i/STEPS;
     pts.push([inc, simulate({...quick,target:inc}).successRate]);
   }
   const X=v=>L+(v-lo)/(hi-lo)*(W-L-R), Y=v=>T+(1-v)*(H-T-B);
   const s=mk("svg",{viewBox:`0 0 ${W} ${H}`,role:"img",
     "aria-label":"Chance the money lasts, by income level"});
-  [0,.25,.5,.75,1].forEach(g=>{
+  // Quarter gridlines crowd a phone; halves are enough to read the shape.
+  (nar?[0,.5,1]:[0,.25,.5,.75,1]).forEach(g=>{
     s.appendChild(mk("line",{x1:L,x2:W-R,y1:Y(g),y2:Y(g),stroke:"var(--grid)","stroke-width":1}));
-    const t=mk("text",{x:L-9,y:Y(g)+4,class:"axis","text-anchor":"end"});
+    const t=txt({x:L-yDx,y:Y(g)+fs*.36,class:"axis","text-anchor":"end"},fs);
     t.textContent=(g*100)+"%"; s.appendChild(t);
   });
   s.appendChild(mk("line",{x1:L,x2:W-R,y1:Y(.9),y2:Y(.9),stroke:"var(--s450)",
     "stroke-width":1,"stroke-dasharray":"4 4",opacity:.8}));
-  const nt=mk("text",{x:W-R,y:Y(.9)-6,class:"axis","text-anchor":"end",fill:"var(--s450)"});
+  const nt=txt({x:W-R,y:Y(.9)-6,class:"axis","text-anchor":"end",fill:"var(--s450)"},fs);
   nt.textContent="9 in 10"; s.appendChild(nt);
 
   let d="";
@@ -722,23 +843,34 @@ function drawCurve(P){
   s.appendChild(mk("path",{d,fill:"none",stroke:"var(--s450)","stroke-width":2,
     "stroke-linejoin":"round","stroke-linecap":"round"}));
   pts.forEach(p=>{
-    const c=mk("circle",{cx:X(p[0]),cy:Y(p[1]),r:4,fill:"var(--s450)",
-      stroke:"var(--surface-1)","stroke-width":2});
-    c.addEventListener("mousemove",e=>showTip(e,
-      `<b>${gbp(p[0])} after tax</b><br>lasts in ${(p[1]*100).toFixed(0)}% of runs`));
-    c.addEventListener("mouseleave",hideTip);
-    s.appendChild(c);
+    const label=`<b>${gbp(p[0])} after tax</b><br>lasts in ${(p[1]*100).toFixed(0)}% of runs`;
+    s.appendChild(mk("circle",{cx:X(p[0]),cy:Y(p[1]),r:dot,fill:"var(--s450)",
+      stroke:"var(--surface-1)","stroke-width":2}));
+    // A separate, invisible, finger-sized target over each dot. A 4px circle
+    // is a fine mouse target and an impossible touch one.
+    const h=mk("circle",{cx:X(p[0]),cy:Y(p[1]),r:Math.max(dot*3,16),fill:"transparent"});
+    const show=e=>{cancelHold();showTip(e,label);};
+    h.addEventListener("mousemove",show);
+    h.addEventListener("mouseleave",()=>{cancelHold();hideTip();});
+    h.addEventListener("touchstart",show,{passive:true});
+    h.addEventListener("touchend",()=>holdThenHide(hideTip),{passive:true});
+    s.appendChild(h);
   });
   // marker for the user's current setting
   if(P.target>=lo&&P.target<=hi){
     const cur=simulate(quick).successRate;
-    s.appendChild(mk("circle",{cx:X(P.target),cy:Y(cur),r:7,fill:"none",
+    s.appendChild(mk("circle",{cx:X(P.target),cy:Y(cur),r:dot+3,fill:"none",
       stroke:"var(--warn)","stroke-width":2.5}));
   }
-  niceTicks(hi,5).filter(v=>v>=lo).forEach(v=>{
-    const t=mk("text",{x:X(v),y:H-14,class:"axis","text-anchor":"middle"});
+  niceTicks(hi,nar?3:5).filter(v=>v>=lo).forEach((v,i,a)=>{
+    const edge = i===0 ? "start" : (i===a.length-1 ? "end" : "middle");
+    const t=txt({x:X(v),y:xLabY,class:"axis","text-anchor":nar?edge:"middle"},fs);
     t.textContent=gbpShort(v); s.appendChild(t);
   });
+  if(nar){
+    const t=txt({x:(L+W-R)/2,y:H-4,class:"axis","text-anchor":"middle"},fs-1);
+    t.textContent="income after tax"; s.appendChild(t);
+  }
   $("curve").replaceChildren(s);
   const tb=$("ctab").querySelector("tbody"); tb.replaceChildren();
   pts.forEach(p=>{const tr=document.createElement("tr");
@@ -865,6 +997,17 @@ $("theme").addEventListener("click",()=>{
   const dark=cur ? cur==="dark"
     : matchMedia("(prefers-color-scheme:dark)").matches;
   document.documentElement.setAttribute("data-theme", dark?"light":"dark");
+});
+
+/* The charts are drawn at two different geometries, so crossing the breakpoint
+   has to redraw them — rotating a phone otherwise leaves desktop proportions
+   squeezed into a narrow column, or the reverse. Only the crossing matters, so
+   ordinary address-bar resizes on mobile scroll cost nothing. */
+let wasNarrow=narrow();
+addEventListener("resize",()=>{
+  if(narrow()===wasNarrow) return;
+  wasNarrow=narrow();
+  schedule();
 });
 run();
 </script>
