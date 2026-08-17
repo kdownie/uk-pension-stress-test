@@ -56,9 +56,15 @@ button.ghost:hover{background:var(--surface-2)}
 .cols{display:grid;grid-template-columns:308px 1fr;gap:26px;align-items:start}
 @media(max-width:860px){
   .cols{grid-template-columns:1fr}
-  /* On a phone, results come first — pull a slider and you should see the
-     numbers move without scrolling past every input to find them. */
+  /* On a phone the page reads top-to-bottom as a conversation, so the order
+     matters: YOUR SITUATION asks the question, results answer it, and the
+     assumptions panel follows as the fine print. An earlier version put all
+     results first, which answered before anything had been asked — with
+     numbers that belonged to a default example, not the visitor. */
+  .cols > div:first-child{display:contents}
+  #situationPanel{order:-2}
   #results{order:-1}
+  #assumpPanel{margin-top:0}
 }
 .panel{background:var(--surface-1);border:1px solid var(--border);border-radius:11px;padding:17px}
 .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;
@@ -139,7 +145,7 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
 
   <!-- ============ INPUTS ============ -->
   <div>
-    <div class="panel">
+    <div class="panel" id="situationPanel">
       <h2>Your situation</h2>
       <div class="row2">
         <label><span class="lbl">Where you live</span>
@@ -221,7 +227,7 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
         single input.</p>
     </div>
 
-    <div class="panel" style="margin-top:16px">
+    <div class="panel" id="assumpPanel" style="margin-top:16px">
       <h2>Assumptions — argue with these</h2>
       <p class="hint">Nothing here is a fact. These are the numbers that decide the
         answer, so they belong to you, not to us.</p>
