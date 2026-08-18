@@ -10,7 +10,7 @@ from playwright.async_api import async_playwright
 
 # Resolve index.html relative to this file so the check runs anywhere the
 # repository is cloned, not just on the machine it was written on.
-PAGE = (pathlib.Path(__file__).resolve().parent.parent / "index.html").as_uri()
+PAGE = (pathlib.Path(__file__).resolve().parent.parent / "public" / "index.html").as_uri()
 
 import uk_rules as R
 from decumulation import Plan, simulate
