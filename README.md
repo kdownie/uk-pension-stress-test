@@ -43,7 +43,7 @@ about your personal circumstances.
 
 ## How to run it
 
-Open `index.html` in a browser. That's the whole thing — one self-contained
+Open `public/index.html` in a browser. That's the whole thing — one self-contained
 file, no server, no build step, no dependencies.
 
 ## How to check it
