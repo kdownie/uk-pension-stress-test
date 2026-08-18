@@ -180,7 +180,14 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
     pots = np.array([[p.pot for p in hh.people]] * n_paths, dtype=float)
     cash = np.zeros(n_paths)
     for j, p in enumerate(hh.people):
-        if p.take_pcls:
+        # A person already dead when the projection starts takes no tax-free
+        # cash. The entitlement dies with the member: the pot passes across
+        # whole, as inherited drawdown. Without this guard the household is
+        # handed 25% of a dead partner's pot as money nobody could have taken,
+        # which flatters the success rate by ~2pp. Mirrors bDeadAtStart in
+        # public/index.html — the two engines must agree here.
+        dead_at_start = p.dies_at_age is not None and p.age >= p.dies_at_age
+        if p.take_pcls and not dead_at_start:
             lump = R.pcls(p.pot)
             pots[:, j] -= lump
             if not p.pcls_spent:

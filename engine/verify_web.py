@@ -119,6 +119,64 @@ async def main():
                 chk(f"{region} split of £{need:,} — partner A", js[0], py[0], 0.5)
                 chk(f"{region} split of £{need:,} — partner B", js[1], py[1], 0.5)
 
+        print("\nF4. DEATH SCENARIOS — JS vs PYTHON (the gap that hid a real bug)")
+        print("=" * 86)
+        # Every couple case above passes deathAge=0, so until this section
+        # existed the cross-check had never once exercised a death. That is how
+        # the dead-at-start tax-free-cash bug survived two engines: two
+        # implementations only help on the paths you actually compare.
+        from household import Household, Person, simulate_household
+
+        def _py_couple(death_age, pcls_spent=False, vol=0.15, paths=20_000):
+            hh = Household(
+                people=[Person(pot=400_000, age=60, state_pension=12_548,
+                               sp_age=67, take_pcls=True,
+                               pcls_spent=pcls_spent),
+                        Person(pot=400_000, age=60, state_pension=12_548,
+                               sp_age=67, take_pcls=True,
+                               pcls_spent=pcls_spent,
+                               dies_at_age=death_age)],
+                target_net_income=40_000, survivor_fraction=0.67, end_age=95)
+            rng = np.random.default_rng(7)
+            z = rng.standard_normal((paths, 35))
+            z = (z - z.mean()) / z.std()
+            rets = np.expm1(np.log1p(0.0294) + vol * z)
+            return simulate_household(hh, rets)
+
+        def _js_cfg(death_age, pcls_spend=False, vol=0.15, paths=20_000):
+            return dict(pot=400_000, retire=60, end=95, target=40_000,
+                        sp=12_548, spAge=67, other=0, takePcls=True,
+                        pclsSpend=pcls_spend, real=0.0294, vol=vol,
+                        conv="geo", freeze=0, paths=paths, couple=True,
+                        region="ruk", pot2=400_000, retire2=60, sp2=12_548,
+                        spAge2=67, other2=0, deathAge=death_age or 0,
+                        survFrac=0.67)
+
+        for label, death_age in [("neither dies", None),
+                                 ("partner dies at 80", 80),
+                                 ("partner dead at the start", 60)]:
+            jsr = await pg.evaluate("cfg => simulate(cfg).successRate",
+                                    _js_cfg(death_age))
+            pyr = _py_couple(death_age).success_rate
+            chk(f"couple success, {label} (±1.5pp MC)",
+                jsr * 100, pyr * 100, 1.5)
+
+        # The Monte Carlo checks above WOULD have caught the bug, but by only
+        # 0.15pp on the seed that was tried — a different seed might not have.
+        # So pin it deterministically as well: zero volatility, and
+        # pclsSpend=True so any lump leaves the household. The opening balance
+        # then reads out directly whether a dead partner's lump was taken, and
+        # a wrong answer shows up as a flat £100,000, not as noise.
+        js_open = await pg.evaluate(
+            "cfg => simulate(cfg).bal[0]",
+            _js_cfg(60, pcls_spend=True, vol=0.0, paths=1))
+        py_open = _py_couple(60, pcls_spent=True, vol=0.0,
+                             paths=1).balances[0, 0]
+        chk("opening balance, partner dead at start (deterministic)",
+            js_open, py_open, 1.0)
+        chk("...and it equals pot less ONE lump, not two",
+            js_open, 800_000.0 - R.pcls(400_000), 1.0)
+
         print("\nG. PAGE HEALTH")
         print("=" * 86)
         for sel, label in [("#s_succ", "success rate"), ("#s_safe", "safe income"),

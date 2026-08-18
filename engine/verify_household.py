@@ -163,6 +163,44 @@ print(f"        gross needed after   (survivor, 67%) : £{g1:,.0f}")
 print(f"        so spending falls 33% but the pot only gets "
       f"{(1 - g1 / g2) * 100:.0f}% relief")
 
+print("\nF. A PERSON ALREADY DEAD AT THE START TAKES NO TAX-FREE CASH")
+print("=" * 92)
+# The entitlement dies with the member: an inherited pot passes across whole,
+# as drawdown. Without the guard the household is handed 25% of a dead
+# partner's pot as money nobody could have taken.
+#
+# These are DELIBERATELY deterministic checks. pcls_spent=True means any lump
+# leaves the household entirely, so the opening balance becomes a direct
+# read-out of whether a lump was taken — no Monte Carlo noise to hide behind.
+# Only the partner (person B) takes a lump here, so the whole difference
+# between the two cases is B's £100,000.
+LUMP = R.pcls(400_000)
+
+
+def _opening(death_age, take_pcls=True):
+    hh = Household(
+        people=[Person(pot=400_000, age=60, take_pcls=False),
+                Person(pot=400_000, age=60, dies_at_age=death_age,
+                       take_pcls=take_pcls, pcls_spent=True)],
+        target_net_income=TARGET, end_age=95)
+    return simulate_household(hh, rets)
+
+
+dead_at_start = _opening(60)
+dies_later = _opening(80)
+chk("opening balance, partner dead at the start",
+    dead_at_start.balances[0, 0], 800_000.0)
+chk("opening balance, partner dies at 80",
+    dies_later.balances[0, 0], 800_000.0 - LUMP)
+chk("the difference is exactly the lump",
+    dead_at_start.balances[0, 0] - dies_later.balances[0, 0], LUMP)
+
+# And the behavioural consequence: for a partner who is already dead,
+# take_pcls must make no difference at all to the outcome.
+no_pcls = _opening(60, take_pcls=False)
+chk("dead-at-start success is unchanged by take_pcls",
+    dead_at_start.success_rate * 100, no_pcls.success_rate * 100)
+
 print("\n" + "=" * 92)
 if fails:
     print(f"FAILED {len(fails)}: " + "; ".join(map(str, fails)))
