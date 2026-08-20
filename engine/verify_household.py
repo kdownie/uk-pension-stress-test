@@ -201,6 +201,75 @@ no_pcls = _opening(60, take_pcls=False)
 chk("dead-at-start success is unchanged by take_pcls",
     dead_at_start.success_rate * 100, no_pcls.success_rate * 100)
 
+print("\nG. LIFETIME TAX MUST DEPEND ON THE PATH")
+print("=" * 92)
+# Found 20 August 2026. tax_paid accrued on the withdrawal the household
+# INTENDED to make, not on the withdrawal it could actually fund. A path whose
+# pot ran dry at 83 went on being charged tax to 95 on money it never took, so
+# tax_paid collapsed to a SINGLE value identical on every path — a run that
+# failed at 83 and a run that paid out in full to 95 reported the same lifetime
+# tax bill.
+#
+# It survived because nothing compared it. The browser engine does not compute
+# lifetime tax at all, so verify_web.py had nothing to cross-check it against —
+# the same shape of gap as section F: an output no test ever exercised.
+#
+# Two guards, and each check pins a different one. Verified by removing them:
+#   both removed (the original code) : check 1 FAILS (one distinct value) and
+#                                      check 2 FAILS. Exit 1.
+#   taken/want factor removed only   : check 1 PASSES — taxing the rescue
+#                                      withdrawal alone makes tax path-dependent
+#                                      — but check 2 FAILS loudly, reporting
+#                                      MORE tax on runs that ran out of money
+#                                      than on runs that paid out in full.
+# So check 1 alone is not sufficient. Check 2 is the load-bearing one: it states
+# a thing that cannot be true of any correct engine.
+_g = np.random.default_rng(7).standard_normal((4_000, 35))
+_g = (_g - _g.mean()) / _g.std()
+_rets = np.expm1(np.log1p(0.0294) + 0.15 * _g)
+
+_hh = Household(
+    people=[Person(pot=400_000, age=60, state_pension=R.STATE_PENSION_ANNUAL,
+                   sp_age=67),
+            Person(pot=400_000, age=60, state_pension=R.STATE_PENSION_ANNUAL,
+                   sp_age=67)],
+    target_net_income=40_000, end_age=95)
+_r = simulate_household(_hh, _rets)
+_t, _d = _r.tax_paid, _r.depleted_age
+
+_distinct = len(np.unique(np.round(_t, 2)))
+print(f"        distinct lifetime-tax values across 4,000 paths: {_distinct:,}")
+if _distinct <= 1:
+    fails.append("lifetime tax is identical on every path")
+    print(f"  FAIL  lifetime tax varies across paths"
+          f"{'':>26} got {_distinct:>14} want          > 1")
+else:
+    print(f"  PASS  lifetime tax varies across paths"
+          f"{'':>26} got {_distinct:>14} want          > 1")
+
+# A run that ran out of money cannot have paid MORE tax than one that funded
+# the income in full — it stopped withdrawing, so it stopped being taxed.
+if (_d > 0).any() and (_d < 0).any():
+    _dry, _ok = float(np.median(_t[_d > 0])), float(np.median(_t[_d < 0]))
+    print(f"        median tax, ran out    : £{_dry:,.0f}")
+    print(f"        median tax, funded to 95: £{_ok:,.0f}")
+    if _dry >= _ok:
+        fails.append("depleted paths pay at least as much tax as surviving ones")
+        print("  FAIL  depleted paths pay less tax than surviving ones")
+    else:
+        print("  PASS  depleted paths pay less tax than surviving ones")
+
+# Zero tax must be charged when nothing is ever withdrawn: a household whose
+# whole income is covered by two State Pensions touches neither pot.
+_free = Household(
+    people=[Person(pot=400_000, age=60, state_pension=R.STATE_PENSION_ANNUAL,
+                   sp_age=60),
+            Person(pot=400_000, age=60, state_pension=R.STATE_PENSION_ANNUAL,
+                   sp_age=60)],
+    target_net_income=20_000, end_age=95)
+chk("no withdrawal needed -> no lifetime tax",
+    float(simulate_household(_free, _rets).tax_paid.max()), 0.0)
+
 print("\n" + "=" * 92)
 if fails:
     print(f"FAILED {len(fails)}: " + "; ".join(map(str, fails)))

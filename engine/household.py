@@ -251,17 +251,38 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
             taken = np.minimum(pots[:, j], want)
             pots[:, j] -= taken
             shortfall += want - taken
+            # Tax is charged on what was ACTUALLY withdrawn, not on what the
+            # household intended to withdraw. Without the `taken/want` factor a
+            # path whose pot ran dry at 83 keeps accruing tax to 95 on money it
+            # never took, and tax_paid collapses to a single number identical on
+            # every path — which is exactly how this was found. The `* frac`
+            # term is the existing linear-in-withdrawal approximation for the
+            # tax-free-cash mechanic; this factor is the same idea applied to a
+            # pot that could not deliver the full split.
+            taken_frac = np.where(want > 1e-9, taken / np.maximum(want, 1e-9), 0.0)
             tax_paid += (R.income_tax(others[k] + splits[k], hh.region, uprate)
-                         - R.income_tax(others[k], hh.region, uprate)) * frac
+                         - R.income_tax(others[k], hh.region, uprate)) * frac * taken_frac
 
-        # If one pot ran dry, try the others before declaring failure.
+        # If one pot ran dry, try the others before declaring failure. That
+        # rescue withdrawal is taxable too, and charging it is what stops a
+        # couple looking artificially cheap: it lands on TOP of the donor's own
+        # split, so it is charged at the donor's marginal rate there, computed
+        # once per person per year rather than per path.
         if len(idx) > 1:
-            for j in idx:
+            marginal = []
+            for k, j in enumerate(idx):
+                at = others[k] + splits[k]
+                step = 1.0
+                marginal.append(
+                    (R.income_tax(at + step, hh.region, uprate)
+                     - R.income_tax(at, hh.region, uprate)) / step)
+            for k, j in enumerate(idx):
                 if not shortfall.any():
                     break
                 take = np.minimum(pots[:, j], shortfall)
                 pots[:, j] -= take
                 shortfall -= take
+                tax_paid += take * marginal[k]
 
         newly_dry = (shortfall > 1e-6) & (depleted < 0)
         depleted[newly_dry] = base_age
