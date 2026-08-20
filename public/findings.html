@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What we found — UK pension stress test</title>
+<meta name="description" content="What came out of building a UK pension drawdown stress test: why the 4% rule is a fact about American data, why a stated return is two different numbers, and which decisions actually move the answer.">
+<link rel="canonical" href="https://pensionstresstest.co.uk/findings.html">
+<meta property="og:title" content="What we found — UK pension stress test">
+<meta property="og:description" content="The 4% rule is a fact about American data. A stated return is two different numbers. And the decisions that move the answer are not the ones people model.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://pensionstresstest.co.uk/findings.html">
+<meta property="og:image" content="https://pensionstresstest.co.uk/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What we found — UK pension stress test">
+<meta name="twitter:description" content="The 4% rule is a fact about American data. A stated return is two different numbers. And the decisions that move the answer are not the ones people model.">
+<meta name="twitter:image" content="https://pensionstresstest.co.uk/og.png">
+<style>
+:root{
+  color-scheme: light;
+  --surface-1:#fcfcfb; --plane:#f9f9f7; --surface-2:#f2f1ed;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s400:#3987e5; --s450:#2a78d6; --s550:#1c5cab; --s650:#104281;
+  --s100:#cde2fb; --warn:#eb6834; --good:#006300; --bad:#e34948;
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme=light])){
+    color-scheme: dark;
+    --surface-1:#1a1a19; --plane:#0d0d0d; --surface-2:#232320;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s400:#2a78d6; --s450:#3987e5; --s550:#86b6ef; --s650:#b7d3f6;
+    --s100:#184f95; --warn:#d95926; --good:#0ca30c; --bad:#e66767;
+  }
+}
+:root[data-theme=dark]{
+  color-scheme: dark;
+  --surface-1:#1a1a19; --plane:#0d0d0d; --surface-2:#232320;
+  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s400:#2a78d6; --s450:#3987e5; --s550:#86b6ef; --s650:#b7d3f6;
+  --s100:#184f95; --warn:#d95926; --good:#0ca30c; --bad:#e66767;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
+.tag{color:var(--ink-2);margin:0;font-size:14.5px;max-width:62ch}
+button.ghost{background:none;border:1px solid var(--border);color:var(--ink-2);
+  border-radius:7px;padding:6px 11px;cursor:pointer;font-size:13px;font-family:inherit}
+button.ghost:hover{background:var(--surface-2)}
+.notice{margin:22px 0 26px;padding:13px 15px;border-radius:9px;background:var(--surface-1);
+  border:1px solid var(--border);border-left:3px solid var(--warn);
+  color:var(--ink-2);font-size:13.5px;max-width:74ch}
+.notice b{color:var(--ink)}
+article{max-width:70ch}
+article h2{font-size:19px;margin:44px 0 4px;letter-spacing:-.01em}
+article h2 .num{color:var(--muted);font-weight:400;margin-right:8px}
+article h3{font-size:15.5px;margin:26px 0 2px}
+article p{margin:12px 0;color:var(--ink-2)}
+article p strong,article li strong{color:var(--ink)}
+article ul{margin:12px 0;padding-left:20px;color:var(--ink-2)}
+article li{margin:6px 0}
+a{color:var(--s550);text-decoration:none;border-bottom:1px solid var(--border)}
+a:hover{border-bottom-color:var(--s550)}
+.lede{font-size:17px;line-height:1.5;color:var(--ink)}
+table{border-collapse:collapse;width:100%;margin:18px 0;font-size:14px}
+caption{caption-side:top;text-align:left;color:var(--muted);font-size:13px;padding-bottom:7px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--grid);text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:1px solid var(--axis)}
+.big{color:var(--ink);font-weight:700}
+.pull{margin:22px 0;padding:14px 16px;background:var(--surface-1);border:1px solid var(--border);
+  border-left:3px solid var(--s450);border-radius:9px;color:var(--ink);font-size:15.5px}
+.src{color:var(--muted);font-size:13px;margin:10px 0}
+pre{background:var(--surface-1);border:1px solid var(--border);border-radius:9px;
+  padding:13px 15px;overflow-x:auto;font-size:13px;color:var(--ink-2);line-height:1.5}
+hr{border:0;border-top:1px solid var(--grid);margin:40px 0}
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--grid);
+  color:var(--muted);font-size:13.5px;max-width:70ch}
+footer a{color:var(--muted)}
+.backlink{display:inline-block;margin-bottom:18px;font-size:14px}
+@media (max-width:640px){ h1{font-size:22px} .lede{font-size:16px} table{font-size:13px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <a class="backlink" href="/">&larr; Back to the stress test</a>
+    <h1>What we found</h1>
+    <p class="tag">Results from building a UK pension drawdown stress test. Every
+      figure here is reproducible from the public repository; §9 says how.</p>
+  </div>
+  <button class="ghost" id="theme">Toggle theme</button>
+</header>
+
+<div class="notice">
+  <b>This describes what a model produced under stated assumptions.</b> It is not
+  advice and not a recommendation. Nothing here is authorised or regulated by the
+  Financial Conduct Authority, and no pension product, fund or provider is named
+  anywhere on this site.
+</div>
+
+<article>
+
+<p class="lede">We set out to build a better engine for simulating investment
+returns, and found that the engine barely mattered. What mattered was UK tax
+law, the State Pension, and one decision about tax-free cash that moves the
+answer further than any other choice on this page.</p>
+
+<p>Along the way the most famous number in retirement planning fell over. That
+seems the right place to start.</p>
+
+<h2><span class="num">1</span>The 4% rule is a fact about American data</h2>
+
+<p>The rule is familiar even to people who have never read where it came from:
+a retiree takes 4% of the pot in the first year, increases that amount with
+inflation every year after, and the money is said to last thirty years.</p>
+
+<p>It comes from a 1994 paper by the American financial planner William Bengen.
+He took US market data going back to 1926, put a portfolio half in shares and
+half in bonds, and worked out what withdrawal rate would have survived every
+thirty-year window in that history. The answer was about 4%. His words: &ldquo;In no
+past case has it caused a portfolio to be exhausted before 33 years.&rdquo;</p>
+
+<p>That is a real result, carefully done. But look at what it is a statement
+about. It is a count of overlapping windows drawn from <strong>one country's
+market history</strong>. It is not a probability. There is no sense in which it
+says &ldquo;this works 100% of the time&rdquo; — it says &ldquo;this happened to work in every
+stretch of American history we have data for&rdquo;.</p>
+
+<p>Which raises an obvious question, and someone has answered it.</p>
+
+<h3>The same test, run on seventeen countries</h3>
+
+<p>In 2010 Wade Pfau ran Bengen's exercise across 17 developed countries using
+the Dimson–Marsh–Staunton dataset, covering 1900 to 2008. He allowed each
+country the <em>best possible</em> asset allocation with a century of hindsight,
+which is generous in a way no real retiree could be.</p>
+
+<table>
+  <caption>Highest withdrawal rate that would have survived 30 years in every historical window, by country</caption>
+  <thead><tr><th>Country</th><th class="n">Rate</th></tr></thead>
+  <tbody>
+    <tr><td>Canada</td><td class="n">4.42%</td></tr>
+    <tr><td>Sweden</td><td class="n">4.23%</td></tr>
+    <tr><td>Denmark</td><td class="n">4.08%</td></tr>
+    <tr><td>United States</td><td class="n">4.02%</td></tr>
+    <tr><td><strong>United Kingdom</strong></td><td class="n"><span class="big">3.77%</span></td></tr>
+  </tbody>
+</table>
+
+<p>Four countries out of seventeen reached 4%. The United States was the fourth
+of them, and only just. A British retiree, drawing on British market history,
+would have got <strong>3.77%</strong>. At a full 4%, the worst British starting
+year — 1900 — ran dry after 26 years.</p>
+
+<div class="pull">The 4% rule is not a law of arithmetic that happens to have
+been discovered in America. It is a description of America. Run the identical
+method on British data and the number is lower.</div>
+
+<h3>What our own engine says</h3>
+
+<p>We tested the same withdrawal against a simulated market that compounds at
+<strong>4.09% a year</strong> after inflation, with 16.5% volatility. A 4% draw
+survived thirty years in <strong>74% of runs</strong>.</p>
+
+<p>We want to be careful about what that does and does not show. It is not a
+replication of Bengen: our series is more volatile than his half-bonds portfolio
+and it is synthetic rather than historical, and both of those push the number
+down. It is a demonstration of something narrower and, we think, more useful —
+that the relationship between the draw rate and the rate the money actually
+compounds at is very nearly the whole story. A 4.00% draw from something
+growing at 4.09% is a close-run thing. The 100% was never a property of the
+number 4. It was a property of the data.</p>
+
+<p>And all of that is before a penny of tax. Which is where the rest of this
+page comes in, because Bengen's American retiree was not navigating the UK
+personal allowance taper.</p>
+
+<h2><span class="num">2</span>&ldquo;A 5% return&rdquo; is not yet a number</h2>
+
+<p>Ask what a 5% expected return means and there are two answers. They are not
+close, and almost nothing tells you which one is meant.</p>
+
+<p>If 5% is the <strong>geometric</strong> mean — the rate the money actually
+compounded at, year after year — then volatility around it does not much hurt
+the middle outcome, and can help it.</p>
+
+<p>If 5% is the <strong>arithmetic</strong> mean — the simple average of the
+yearly returns — then volatility eats into it, and the more volatile the series
+the more it eats. This is not an obscure effect. Push volatility to 25% and a
+stated 2.94% real return compounds at <strong>&minus;0.23%</strong>. The number
+on the page has not changed. The money is gone.</p>
+
+<p>The FCA's projection rates in COBS 13 Annex 2 are maximum rates set for a
+single-path, deterministic projection: a rate compounded annually, with no
+distribution around it. Nothing in the rules says what to do with that number
+inside a stochastic model, and the arithmetic/geometric distinction is never
+addressed there because within a single path it never arises. As far as we can
+tell, no consumer calculator addresses it either: they take a percentage and
+run. This tool makes the choice explicit, because the choosing <em>is</em> the
+modelling.</p>
+
+<h2><span class="num">3</span>The decisions that move the answer are not the ones people model</h2>
+
+<p>We ranked modelling choices by how far each one moves a single number: the
+share of runs in which a £500,000 pot delivers £30,000 of income after tax from
+age 60 to 95. That is the scenario the calculator loads with: averaged over
+three random seeds it funds the full income in <strong>35.7%</strong> of runs,
+and the single seed the front page uses reports 35%.</p>
+
+<table>
+  <caption>Effect on the share of runs that funded the full income to 95.
+    Baseline 35.7%. £500,000 pot, £30,000 net, ages 60–95, 2.94% real return,
+    15% volatility, 20,000 runs, averaged over three random seeds.</caption>
+  <thead><tr><th>Change</th><th class="n">Effect</th></tr></thead>
+  <tbody>
+    <tr><td>Tax-free cash spent elsewhere rather than funding income</td><td class="n"><span class="big">&minus;24.8 pp</span></td></tr>
+    <tr><td>Real return assumption +1% a year</td><td class="n">+11.9 pp</td></tr>
+    <tr><td>Real return assumption &minus;1% a year</td><td class="n">&minus;10.7 pp</td></tr>
+    <tr><td>Retiring at 62 instead of 60</td><td class="n">+7.5 pp</td></tr>
+    <tr><td>Tax bands frozen for 20 years</td><td class="n">&minus;6.6 pp</td></tr>
+    <tr><td>State Pension at 80% of full, from a partial NI record</td><td class="n">&minus;6.3 pp</td></tr>
+    <tr><td>Swapping the whole stochastic engine for a simpler one <span style="color:var(--muted)">(different basis — see below)</span></td><td class="n"><span class="big">+2.8 pp</span></td></tr>
+  </tbody>
+</table>
+
+<p class="src">The last row is a matched pair rather than a change to the
+baseline: the same scenario run through a historical-style block bootstrap and
+through an independent lognormal draw, both set to the same 4.09% real return
+and 16.5% volatility, scored 46.0% and 48.8%.</p>
+
+<p>That last row is the punchline. The return-generating engine — the part that
+looks like the hard modelling, the part with the interesting mathematics — is
+worth about a ninth of what happens to the tax-free cash.</p>
+
+<p>We expected the opposite. The idea going in was that realistic market
+structure, with bad years clustering into bad decades, would separate a
+sophisticated engine from a naive one. It doesn't, and the reason is that daily
+turbulence largely washes out once it is compounded into annual returns. Matched
+on return and volatility, the two engines never disagreed by more than about
+three points anywhere on the withdrawal curve.</p>
+
+<p>Three of the seven rows are specific to UK policy: the band freeze, the
+National Insurance record, and the treatment of the lump sum. We are not aware
+of a free calculator that models any of them.</p>
+
+<h2><span class="num">4</span>The tax-free cash decision is the largest single choice on the page</h2>
+
+<p>A quarter of a pension pot can usually be taken free of income tax, subject
+to a lump sum allowance of £268,275. What happens to it next is, on these
+numbers, the largest single choice on this page — larger than the return
+assumption, larger than retiring two years later, and close to nine times the
+choice of simulation engine. (The household comparison in §5
+is larger still, but nobody chooses their household.)</p>
+
+<p>The mechanism is not complicated. In the model, a pound of retained lump sum
+displaces £1.25 of gross withdrawal at a 20% marginal rate and £1.67 at 40%,
+because it arrives without income tax attached. Spend it elsewhere and the
+taxable pot has to cover the whole income, at the taxpayer's marginal rate, for
+thirty-five years.</p>
+
+<p>We are not saying what anyone should do with it — there are perfectly ordinary
+reasons to take the cash and use it, and this model knows nothing about anyone's
+circumstances. We are saying that if a projection does not ask the question, its
+answer is missing the largest term.</p>
+
+<h2><span class="num">5</span>Two of everything</h2>
+
+<p>Same £800,000, same £40,000 net target, same ages. The only difference is
+whether it sits in one name or two.</p>
+
+<table>
+  <caption>£800,000 total, £40,000 a year after tax, ages 60–95. Same
+    assumptions as §3: 2.94% real return, 15% volatility, 20,000 runs, averaged
+    over three random seeds. Lifetime tax is measured on the runs that funded
+    the income in full to 95, so both columns describe the same delivered
+    income.</caption>
+  <thead><tr><th>Household</th><th class="n">Funded to 95</th><th class="n">Lifetime tax</th></tr></thead>
+  <tbody>
+    <tr><td>Couple, £400,000 each</td><td class="n"><span class="big">80.8%</span></td><td class="n">£111,500</td></tr>
+    <tr><td>One person, £800,000</td><td class="n"><span class="big">43.6%</span></td><td class="n">£205,700</td></tr>
+  </tbody>
+</table>
+
+<p>Nearly double the success rate and <strong>£94,000 less tax</strong> on the
+same delivered income, from nothing but having two of everything the tax system
+grants per person: two personal allowances, two basic-rate bands, two State
+Pensions.</p>
+
+<p>The comparison has to be made on runs that delivered the income, because
+otherwise it flatters the wrong household. Across <em>all</em> runs the single
+person's median lifetime tax is only £181,200 — lower, but only because the
+median single-person run stops being able to withdraw at 83. Running out of
+money is an effective way to reduce a tax bill and a poor way to fund a
+retirement. We found this the hard way; §7 has the story.</p>
+
+<p>Nobody can act on this — a household is not a setting. It is here because it
+calibrates the rest. An effect of 37 points makes the 12 points from the return
+assumption look modest, and makes the 3 points from engine choice look like what
+it is.</p>
+
+<h3>And the survivor cliff is the opposite of what people expect</h3>
+
+<p>The intuition is that losing a partner is a catastrophe for the pot. It
+isn't — because the survivor spends about a third less. What actually happens is
+quieter and worse.</p>
+
+<table>
+  <caption>Gross withdrawal needed from the pots, before and after one death</caption>
+  <thead><tr><th></th><th class="n">Needed from the pots</th></tr></thead>
+  <tbody>
+    <tr><td>Couple, £40,000 a year after tax</td><td class="n">£18,620</td></tr>
+    <tr><td>Survivor, spending 67% of that</td><td class="n">£17,810</td></tr>
+  </tbody>
+</table>
+
+<p>Spending falls 33%. The withdrawal falls <strong>4%</strong>.</p>
+
+<p>The survivor loses one State Pension — £12,547.60 a year, which at the full
+new State Pension with no protected payment is not inheritable — and one
+personal allowance, £12,570 of tax-free room. Both vanish at once, and the pot
+has to replace them. So it drains for one person very
+nearly as fast as it did for two.</p>
+
+<p>The cliff is real. It is a cliff in how efficiently income is produced, not
+in whether the pot survives. A model that reports only a success rate will show
+almost nothing happening. This one reports both.</p>
+
+<h2><span class="num">6</span>A bug in how this is usually built</h2>
+
+<p>GOV.UK presents income tax as ranges: £12,571 to £50,270 at 20%, and so on.
+That presentation quietly assumes a full personal allowance.</p>
+
+<p>The legislation works differently. The basic-rate band is a <strong>width</strong>
+— £37,700 — that sits on top of whatever personal allowance survives the taper
+that begins at £100,000 of income. Once the allowance starts disappearing, the
+40% band starts <em>lower</em>, not at £50,270.</p>
+
+<p>Build a calculator from the published table rather than from the legislation
+and you understate the tax across the whole taper region. The gap widens as the
+allowance vanishes, reaching <strong>£5,028</strong> a year — 40% of the lost
+allowance — the moment the allowance is gone at £125,140 of income, and staying
+there for every income above that. That is precisely the range a large pot in drawdown
+reaches when someone takes a big withdrawal.</p>
+
+<p>Our first implementation had this bug. The engine now reproduces figures
+computed from the legislated rates exactly — £33,432 of tax on £110,000, £53,703
+on £150,000 — and those two checks run every time the test suite runs.</p>
+
+<p>Worth noting what kind of mistake it was: not an error in the mathematics,
+but an error in reading a government website correctly. Those are the ones that
+survive review.</p>
+
+<h2><span class="num">7</span>Two bugs in ours, and what they cost</h2>
+
+<h3>The one the tests should have caught</h3>
+
+<p>In August 2026 we found that our Python engine handed a household £100,000 of
+tax-free cash out of the pot of a partner who was <em>already dead</em> when the
+projection began. A deceased member's lump sum entitlement dies with them; the
+pot passes across whole. Nobody could ever have taken that money.</p>
+
+<p>On a £400,000 + £400,000 household with a £40,000 target and a partner dead
+at the start, the success rate was <strong>90.1% before the fix and 88.1%
+after</strong>. Two points, in the flattering direction — just under the
+engine-choice effect in §3 that we use as the threshold for whether a feature is
+worth building at all.</p>
+
+<p>The interesting part is why it survived. There are two independent
+implementations here, the JavaScript in your browser and a Python reference, and
+a script that cross-checks them against each other. The JavaScript had the
+guard. The Python did not. The cross-check should have caught it instantly —
+except that <strong>every couple test case passed a death age of zero</strong>.
+The comparison had never once exercised a death.</p>
+
+<div class="pull">That is the finding, not the bug. Two independent
+implementations only protect you on the paths you actually compare, and a
+coverage gap is invisible in a green test run. The question to ask of a passing
+test suite is not &ldquo;did it pass&rdquo; but &ldquo;which combinations does it never
+construct&rdquo;.</div>
+
+<p>The fix and the tests that pin it are in the repository. We checked that the
+new tests fail when the guard is removed, because a test that cannot fail proves
+nothing. One of them is deliberately run at zero volatility, so the error shows
+up as a flat £100,000 discrepancy in the opening balance rather than as a
+statistical wobble a different random seed might have hidden.</p>
+
+<h3>The one we found writing this page</h3>
+
+<p>Checking the numbers for §5 turned up a second one, of exactly the same
+shape.</p>
+
+<p>Lifetime tax was accruing on the withdrawal a household <em>intended</em> to
+make, not on the withdrawal its pot could actually fund. Once a pot ran dry the
+model went on charging tax to 95 on money nobody withdrew. The symptom, once we
+looked, was unmistakable: across 20,000 runs the lifetime tax figure took
+<strong>exactly one value</strong>. A run that failed at 83 and a run that paid
+out in full to 95 reported the same tax bill, and the number did not move when
+the returns did.</p>
+
+<p>It survived for the same reason the first one did: <strong>nothing compared
+it</strong>. The browser engine does not compute lifetime tax at all, so the
+cross-check between the two engines had nothing to check it against. An output
+that only one implementation produces is an output no one is checking.</p>
+
+<p>What it changed: the headline in §5 held up, because that comparison is made
+on runs that delivered the income in full, and on those runs the old figure was
+right. What was wrong was everything that depended on the spread — the claim
+that £111,450 was a <em>median</em>, and any comparison across runs that failed.
+The tax difference between one household and two moved from £94,275 to £94,260,
+which is to say it did not really move at all. The distribution behind it went
+from a single point to something with a shape.</p>
+
+<p>The new checks in <code>verify_household.py</code> pin two things: that
+lifetime tax varies across paths at all, and that a run which ran out of money
+never reports more tax than one which funded the income in full. We removed each
+guard in turn to confirm the checks fail without it. The second check is the
+load-bearing one — the first can be satisfied by an engine that is still
+wrong.</p>
+
+<h2><span class="num">8</span>What isn't modelled</h2>
+
+<p>Being explicit about this matters more than the feature list.</p>
+
+<ul>
+  <li><strong>Inherited pots are treated as fully taxable drawdown.</strong> The
+    real rules differ by age at death — broadly tax-free if the member died
+    before 75, taxed at the beneficiary's marginal rate after. Ours is the
+    cautious direction. It is a disclosed simplification, not an error.</li>
+  <li><strong>Only a partner's death is modelled, not your own.</strong></li>
+  <li><strong>Both pots in a couple share one return path.</strong> One
+    household, one market — no diversification benefit between partners. Again
+    the cautious direction, and stated on the page rather than buried.</li>
+  <li>No National Insurance (correct for pension income, wrong the moment earned
+    income is added), no money purchase annual allowance, no defined benefit
+    pensions or annuities, no inheritance tax, no investment charges, no care
+    costs, and no ISAs or other wrappers yet.</li>
+  <li>Mortality is a date you pick, not a probability.</li>
+  <li>The State Pension defaults to the full new State Pension, which assumes a
+    complete National Insurance record. Many people get less. An actual forecast
+    is at <a href="https://www.gov.uk/check-state-pension">gov.uk/check-state-pension</a>.</li>
+</ul>
+
+<h2><span class="num">9</span>How to check any of this</h2>
+
+<p>Every figure on this page comes out of code that anyone can run.</p>
+
+<pre>git clone https://github.com/kdownie/uk-pension-stress-test
+cd uk-pension-stress-test/engine
+pip install -r requirements.txt
+python verify.py &amp;&amp; python verify_household.py &amp;&amp; python verify_web.py</pre>
+
+<ul>
+  <li><strong>verify.py</strong> — tax against figures computed from the legislated
+    rates, the gross-up as
+    an exact inverse of the tax function, the simulator against a closed-form
+    answer at zero volatility, and the 4% result in §1.</li>
+  <li><strong>verify_household.py</strong> — Scottish bands hand-computed from
+    the band table, couples, and the tax-optimal split checked against a
+    brute-force search.</li>
+  <li><strong>verify_web.py</strong> — drives the actual live page in a headless
+    browser and compares what the browser computes to what Python computes, line
+    by line.</li>
+</ul>
+
+<p>Every legislated figure lives in one block in <code>engine/uk_rules.py</code>
+with a source URL and the date it was checked. If a number is not there with a
+source, it is not used.</p>
+
+<p class="src">Monte Carlo figures move by a few tenths of a point between random
+seeds, so every simulated figure here is averaged over three seeds and quoted to
+one decimal place.
+The longer technical version of this page is
+<a href="https://github.com/kdownie/uk-pension-stress-test/blob/main/docs/FINDINGS.md">docs/FINDINGS.md</a>
+in the repository.</p>
+
+<hr>
+
+<h3>Sources</h3>
+<p class="src">
+  W. P. Bengen, &ldquo;Determining Withdrawal Rates Using Historical Data&rdquo;,
+  <em>Journal of Financial Planning</em>, October 1994 —
+  <a href="https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf">paper (PDF)</a>.<br>
+  W. D. Pfau, &ldquo;An International Perspective on Safe Withdrawal Rates: The Demise
+  of the 4 Percent Rule?&rdquo;, <em>Journal of Financial Planning</em>, December 2010 —
+  <a href="https://www.financialplanningassociation.org/sites/default/files/2021-10/DEC10%20JFP%20Pfau%20PDF.pdf">paper (PDF)</a>.<br>
+  Projection rates: FCA Handbook COBS 13 Annex 2 —
+  <a href="https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html">handbook.fca.org.uk</a>.<br>
+  Tax and State Pension figures: <a href="https://www.gov.uk/income-tax-rates">gov.uk/income-tax-rates</a>,
+  <a href="https://www.gov.uk/new-state-pension/what-youll-get">gov.uk/new-state-pension</a>.
+</p>
+
+</article>
+
+<footer>
+  <p>Free, independent, and open source. No accounts, no cookies, no analytics,
+  no server — this page and the calculator are static files, and nothing you do
+  here is recorded. Wrong in ways we'd like to know about:
+  <a href="https://github.com/kdownie/uk-pension-stress-test">the code is on GitHub</a>.</p>
+  <p><a href="/">&larr; Back to the stress test</a></p>
+</footer>
+
+</div>
+<script>
+"use strict";
+document.getElementById("theme").addEventListener("click", function () {
+  var r = document.documentElement;
+  var dark = getComputedStyle(r).getPropertyValue("--ink").trim() === "#fff";
+  r.setAttribute("data-theme", dark ? "light" : "dark");
+});
+</script>
+</body>
+</html>
