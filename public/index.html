@@ -52,7 +52,7 @@
     {
       "@type": "Question",
       "name": "What return does it assume?",
-      "acceptedAnswer": {"@type": "Answer", "text": "By default the FCA's prescribed projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. You can set your own."}
+      "acceptedAnswer": {"@type": "Answer", "text": "By default the FCA's projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. The Handbook does not prescribe that 5% — it is the highest intermediate rate a firm may use for a personal pension, and the firm is expected to justify it against the actual investments. The lower and higher cases, 2% and 8%, are in the dropdown. You can also set your own."}
     },
     {
       "@type": "Question",
@@ -380,7 +380,7 @@ footer a{color:var(--s450)}
 
       <label><span class="lbl">Volatility <span class="val" id="v_vol">15%</span></span>
         <input type="range" id="vol" min="0" max="30" step="1" value="15"></label>
-      <p class="hint">The FCA prescribes returns but <b>not</b> volatility. This one
+      <p class="hint">The FCA caps returns but says nothing about volatility. This one
         is a guess — ours or yours, but a guess.</p>
 
       <label><span class="lbl">That return figure is a…</span>
@@ -408,7 +408,7 @@ footer a{color:var(--s450)}
   <div class="src">
     <p><b>What is a pension stress test?</b> A simulation that runs many possible futures for a pension pot in drawdown, year by year, to show how often the income lasts to your chosen age and what happens when it does not.</p>
     <p><b>How long will my pension last?</b> It depends on the pot size, income target, returns, tax and inflation. Enter your figures to see the share of simulations that fund the full income to your end age.</p>
-    <p><b>What return does it assume?</b> By default the FCA's prescribed projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. You can set your own.</p>
+    <p><b>What return does it assume?</b> By default the FCA's projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. The Handbook does not prescribe that 5% — it is the <i>highest intermediate rate</i> a firm may use for a personal pension, and the firm is expected to justify it against the actual investments. The lower and higher cases, 2% and 8%, are in the dropdown. You can also set your own.</p>
     <p><b>Does it model UK income tax?</b> Yes, for England/Wales/NI and Scotland. The basic-rate band is stacked on top of whatever personal allowance survives the £100,000 taper, which most calculators get wrong.</p>
     <p><b>Does it model a couple?</b> Yes. Two pots, two State Pensions and two personal allowances, with each year's withdrawal split between the pots to minimise the household tax bill.</p>
     <p><b>Is this financial advice?</b> No. It is not authorised or regulated by the FCA, gives no recommendation, and names no pension product, fund or provider.</p>
@@ -983,9 +983,11 @@ function assumptionsBlock(P,r){
   $("assump").innerHTML = `
   <p><b>Return.</b> ${scenTxt}, giving <b>${(P.real*100).toFixed(2)}% a year after
   inflation</b>, treated as a <b>${P.conv==="geo"?"geometric":"arithmetic"} mean</b>,
-  with volatility of ${(P.vol*100).toFixed(0)}% — a figure no regulator prescribes.
-  Prescribed rates: <a href="${RULES.src.fca}">FCA Handbook COBS 13 Annex 2</a>,
-  checked 15 August 2026.</p>
+  with volatility of ${(P.vol*100).toFixed(0)}% — a figure no regulator sets.
+  The 2/5/8% figures are Handbook <b>maximums</b> for the three cases, not
+  prescribed values; deflating by 2% inflation is the Handbook's own
+  construction (COBS 13 Annex 2 1.2R). <a href="${RULES.src.fca}">FCA Handbook
+  COBS 13 Annex 2</a>, checked 20 August 2026.</p>
   <p><b>Tax.</b> ${RULES.taxYear}, ${REGIONS[P.region].label}. Personal allowance
   ${gbp(RULES.personalAllowance)} (UK-wide), tapered away between
   ${gbp(RULES.taperFrom)} and ${gbp(REGIONS[P.region].topFrom)} — which creates an
