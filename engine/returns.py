@@ -215,7 +215,7 @@ class NeuralSDE:
 
 
 # --------------------------------------------------------------------------
-# Engine 3 — FCA prescribed rates (no dataset required)
+# Engine 3 — FCA projection rates (no dataset required)
 # --------------------------------------------------------------------------
 
 class FCAPrescribed:
@@ -223,9 +223,26 @@ class FCAPrescribed:
     Return engine built on the FCA's own standardised projection rates, so
     it needs NO historical dataset and therefore has NO licensing problem.
 
-    COBS 13 Annex 2 2.3R — nominal rates a firm must use when projecting a
-    personal pension:            lower 2%   intermediate 5%   higher 8%
-    COBS 13 Annex 2 2.5R — price inflation:
+    NAMING, corrected 2026-08-20: these are NOT "prescribed" rates, and this
+    class is misnamed. COBS 13 Annex 2 2.3R sets MAXIMUM rates — a firm's
+    intermediate rate "must accurately reflect the investment potential of
+    each of the product's underlying investment options" and "must not exceed"
+    the table below. Only the INFLATION rates in 2.5R are prescribed as fixed
+    values. The class name is kept so existing code and saved scripts still
+    run; the user-facing `name` below is accurate.
+
+    Consequence worth stating plainly: 5% is the HIGHEST INTERMEDIATE rate a
+    firm may use for a personal pension, and the firm is expected to justify it
+    against the actual underlying investments. It is a cap on the central case,
+    NOT the top of the permitted range — 1.1R requires a compliant projection to
+    show lower, intermediate and higher, so 2/5/8 is the full span and 5 is its
+    middle. Do not describe the default as "optimistic": the cap is uniform
+    across all personal pensions regardless of asset mix, so for an
+    equity-heavy pot it may well be an understatement.
+
+    COBS 13 Annex 2 2.3R — MAXIMUM nominal rates for a personal or stakeholder
+    pension:                     lower 2%   intermediate 5%   higher 8%
+    COBS 13 Annex 2 2.5R — price inflation, prescribed as fixed values:
                                  lower 0%   intermediate 2%   higher 4%
 
     Deflating each return by the INTERMEDIATE inflation rate (2%) gives the
@@ -235,25 +252,30 @@ class FCAPrescribed:
         centre (1.05/1.02) - 1 = 2.94% real
         higher (1.08/1.02) - 1 = 5.88% real
 
-    That pairing is an interpretation, not a rule — the Handbook prescribes
-    the rates, not how to combine them. It is exposed as a parameter so the
-    user can disagree with it.
+    CORRECTED 2026-08-20: that pairing is NOT an interpretation, as this
+    docstring previously claimed. COBS 13 Annex 2 1.2R requires a personal
+    pension projection to "be in real terms" and to be calculated using "the
+    intermediate rate of price inflation, in accordance with COBS 13 Annex 2
+    2.5R". Deflating the nominal rate by 2% is the Handbook's own construction.
+    It stays exposed as a parameter anyway, so a user can model something else.
 
-    IMPORTANT: the FCA prescribes RETURNS, not VOLATILITY. `vol` below is
-    an assumption with no regulatory backing, and it is the weakest number
-    in this engine. It must be surfaced to the user, not buried.
+    IMPORTANT: the FCA caps RETURNS and says nothing at all about VOLATILITY.
+    `vol` below is an assumption with no regulatory backing, and it is the
+    weakest number in this engine. It must be surfaced to the user, not buried.
 
     Source: https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html
-    Checked: 2026-08-15. Firms' prescribed rates are periodically reviewed —
-    re-check against the live Handbook before relying on them.
+    Checked: 2026-08-15, re-read 2026-08-20. The maximum rates are
+    periodically reviewed — re-check against the live Handbook before relying
+    on them.
     """
 
-    name = "FCA prescribed rates"
+    name = "FCA projection rates (Handbook maximum)"
     is_default = False
 
     NOMINAL = {"lower": 0.02, "centre": 0.05, "higher": 0.08}
     INFLATION = {"lower": 0.00, "centre": 0.02, "higher": 0.04}
-    SOURCE = "FCA Handbook COBS 13 Annex 2 2.3R / 2.5R, checked 2026-08-15"
+    SOURCE = ("FCA Handbook COBS 13 Annex 2 2.3R (maximum rates) / 2.5R "
+              "(prescribed inflation), checked 2026-08-20")
 
     def __init__(self, scenario: str = "centre", vol: float = 0.15,
                  inflation_scenario: str = "centre"):
@@ -287,4 +309,4 @@ class FCAPrescribed:
         return (f"{self.name}: {self.scenario} scenario, {self.nominal:.0%} "
                 f"nominal less {self.inflation:.0%} inflation = "
                 f"{self.real:+.2%} real; vol {self.vol:.0%} "
-                f"(NOT prescribed — user assumption). {self.SOURCE}")
+                f"(NOT set by the FCA — user assumption). {self.SOURCE}")
