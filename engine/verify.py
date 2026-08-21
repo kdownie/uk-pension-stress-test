@@ -2,9 +2,14 @@
 Verification. Run this before trusting anything the model says.
 
 Three kinds of check:
-  A. Tax layer against hand-computed and published figures.
+  A. Tax layer against figures computed from the legislated rates.
   B. The simulator against a closed-form answer (zero volatility).
   C. The whole thing against a published external result (the 4% rule).
+
+NOTE on wording, 2026-08-20: the section A targets below are computed from the
+legislated rates, NOT lifted from a published HMRC table — HMRC publishes no
+worked totals at these incomes. Earlier versions marked them [published],
+which was a claim nobody could check.
 """
 
 from __future__ import annotations
@@ -38,11 +43,11 @@ check("£20,000  = 7,430 @ 20%", R.income_tax(20_000), 1_486.0, 0.01)
 check("£50,270  = 37,700 @ 20%", R.income_tax(50_270), 7_540.0, 0.01)
 check("£60,000  = 7,540 + 9,730 @ 40%", R.income_tax(60_000), 11_432.0, 0.01)
 # Published figures — these are the ones that catch the band-structure bug.
-check("£110,000 (PA tapered to 7,570) [published]",
+check("£110,000 (PA tapered to 7,570) [from rates]",
       R.income_tax(110_000), 33_432.0, 0.01)
-check("£125,140 (PA fully gone) [published]",
+check("£125,140 (PA fully gone) [from rates]",
       R.income_tax(125_140), 42_516.0, 0.01)
-check("£150,000 (additional rate) [published]",
+check("£150,000 (additional rate) [from rates]",
       R.income_tax(150_000), 53_703.0, 0.01)
 
 print("\n  personal allowance taper")
@@ -136,10 +141,14 @@ print(f"        history: arithmetic {annual.mean():+.2%}, "
 print(f"        4% gross draw, 30 years: success {sr:.1%}")
 print(f"        -> the draw rate (4.00%) vs the geometric return "
       f"({geo:.2%}) is the whole story.")
-print("        Bengen's 100% survival came from US 20th-century returns of")
-print("        roughly 5% real geometric on a 50/50 portfolio. On a series")
-print("        that only compounds at ~4% real, a 4% draw is a coin-flip-ish")
-print("        proposition. The 4% rule is a fact about a dataset, not a law.")
+print("        Bengen's 100% came from Ibbotson US data from 1926 on a 50/50")
+print("        portfolio, and is a COUNT of overlapping windows, not a")
+print("        probability. On a series compounding at ~4% real, a 4% draw is")
+print("        a coin-flip-ish proposition.")
+print("        The like-for-like historical check is Pfau (2010), 17 countries")
+print("        on Dimson-Marsh-Staunton 1900-2008, best allocation in")
+print("        hindsight: US 4.02%, UNITED KINGDOM 3.77%, only 4 of 17 at or")
+print("        above 4%. The 4% rule is a fact about a dataset, not a law.")
 
 # The real engine test is DIRECTIONAL: success must rise monotonically with
 # the return assumption, and must straddle the geometric-return threshold.
