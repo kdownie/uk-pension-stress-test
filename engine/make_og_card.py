@@ -4,7 +4,7 @@ Regenerate public/og.png — the social preview card — from the real engine.
 The card quotes a result. That result is produced here by the same Python
 engine the repo ships and the same default scenario the page loads with, so
 the number on the card is checkable rather than decorative. If the FCA
-prescribed rates change, or the tax figures in uk_rules.py are updated, run
+FCA projection rates change, or the tax figures in uk_rules.py are updated, run
 this again and the card follows.
 
     cd engine
@@ -125,7 +125,7 @@ def build_html(res, ages, surv, half) -> str:
   <div class="hero">{pct} <span class="em">of 100</span></div>
   <div class="sub">runs funded the full income<br>from age {PLAN.retire_age} to {PLAN.end_age}.</div>
   <div class="stat">Half were dry by age {half}.</div>
-  <div class="assump">FCA prescribed rates &middot; 2.94% real, {VOL:.0%} volatility<br>{N_PATHS:,} simulations &middot; every assumption editable</div>
+  <div class="assump">FCA projection rates &middot; 2.94% real, {VOL:.0%} volatility<br>{N_PATHS:,} simulations &middot; every assumption editable</div>
   <div class="spacer"></div>
   <div class="domain">pensionstresstest.co.uk</div>
 </div>
