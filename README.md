@@ -31,8 +31,10 @@ This is an attempt at the second thing.
   a personal allowance are lost but the bills don't halve
 - Tax-free cash, including the lump sum allowance cap
 - **Fiscal drag** — what a nominal freeze in tax bands costs in real terms
-- Return assumptions taken from the **FCA's own prescribed projection rates**
-  rather than a house view
+- Return assumptions taken from the **FCA's own projection rates** (COBS 13
+  Annex 2) rather than a house view — note these are the Handbook's *maximum*
+  permitted rates, not prescribed ones; see
+  [docs/FINDINGS.md §4](docs/FINDINGS.md)
 
 ## What it does not do
 
@@ -52,14 +54,14 @@ The point of this project is that you don't have to take its word for anything.
 
 There are **two independent implementations** of the same rules: the JavaScript
 that runs in your browser, and a Python reference engine in `engine/`. They are
-checked against each other, and the Python one is checked against published
-figures.
+checked against each other, and the Python one is checked against figures
+computed from the legislated rates.
 
 ```bash
 cd engine
 pip install -r requirements.txt
 
-python verify.py             # tax and simulator vs published figures & closed forms
+python verify.py             # tax and simulator vs legislated rates & closed forms
 python verify_household.py   # Scottish bands, couples, tax-optimal splitting
 python verify_web.py         # the browser engine vs the Python engine
 ```
@@ -68,7 +70,7 @@ What those actually verify:
 
 | Check | Against what |
 |---|---|
-| Income tax | Published figures, incl. £110,000 → £33,432 and £150,000 → £53,703 |
+| Income tax | Computed from the legislated rates, incl. £110,000 → £33,432 and £150,000 → £53,703 |
 | Scottish tax | Hand-computed from the published band table |
 | Gross-up | Must be an exact inverse of the tax function |
 | Simulator | A closed-form annuity recursion at zero volatility |
@@ -86,9 +88,12 @@ the basic-rate band is £37,700 wide and sits on top of whatever allowance
 survives the £100,000 taper — so above £100,000 the 40% band starts *lower*,
 not at £50,270.
 
-Building from the published table rather than the mechanics understates tax on
-a £110,000 income by about £5,000. That is exactly the range a large pot in
-drawdown can reach. This engine gets it right and the test suite proves it.
+Building from the published table rather than the mechanics understates tax
+across the taper region. The error is exactly 40% of the allowance lost, so it
+reaches **£5,028** once the allowance is fully gone at £125,140 and stays there
+for every income above that — a plateau, not a peak. That is exactly the range a
+large pot in drawdown can reach. This engine gets it right and the test suite
+proves it.
 
 ## Assumptions
 
@@ -106,6 +111,7 @@ file, verify before relying on anything.
 |---|---|
 | [Regulatory position](docs/REGULATORY-POSITION.md) | Where the advice/guidance boundary sits and the rules this project is built by |
 | [Findings](docs/FINDINGS.md) | What the modelling actually showed, including results that contradicted the hypothesis |
+| [Findings, for a general reader](https://pensionstresstest.co.uk/findings.html) | The same material written for someone who is not a developer |
 | [Data sourcing](docs/DATA-SOURCING.md) | Why there is no historical dataset, and the licensing behind that |
 
 ## Known limitations
@@ -114,7 +120,7 @@ The historical-bootstrap engine in `engine/returns.py` currently runs on a
 **synthetic** market series, not real data — free, redistributable long-run UK
 return data is a licensing problem, not a coding one. This is documented at
 length in [docs/DATA-SOURCING.md](docs/DATA-SOURCING.md) and flagged loudly in
-the code. The browser tool does not use it; it uses the FCA prescribed rates.
+the code. The browser tool does not use it; it uses the FCA projection rates.
 
 ## Privacy
 
