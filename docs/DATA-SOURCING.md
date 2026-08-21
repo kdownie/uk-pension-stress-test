@@ -11,39 +11,52 @@ one actually needs a dataset.
 | | Worth | Needs a dataset? |
 |---|---:|---|
 | **A. The return assumption** — what the pot compounds at | **±12 pp** | **No** |
-| **B. The path shape** — sequence, clustering, drawdown texture | **~2 pp** | Yes |
+| **B. The path shape** — sequence, clustering, drawdown texture | **~3 pp** | Yes |
 
-The expensive, licence-encumbered data is needed only for the part worth two
+The expensive, licence-encumbered data is needed only for the part worth three
 percentage points. The part worth twelve is published free by the regulator.
 
-## A. The return assumption is already solved, by the FCA
+## A. The return assumption has a public, UK-specific reference point: the FCA's
 
-**COBS 13 Annex 2** prescribes the rates a firm *must* use when projecting a
-personal pension. Nominal: **2% / 5% / 8%**. Price inflation: **0% / 2% / 4%**.
-Deflating by the intermediate inflation rate gives real returns of **0.00% /
-2.94% / 5.88%**.
+**COBS 13 Annex 2** sets the rates a firm may use when projecting a personal
+pension. Nominal: **2% / 5% / 8%**. Price inflation: **0% / 2% / 4%**. Deflating
+by the intermediate inflation rate gives real returns of **0.00% / 2.94% /
+5.88%**.
+
+**Corrected 20 August 2026 — these are not "prescribed" rates.** 2.3R sets
+**maximum** rates: the firm's intermediate rate "must accurately reflect the
+investment potential of each of the product's underlying investment options" and
+"must not exceed" the table. Only the inflation rates in 2.5R are prescribed as
+fixed values. So 5% nominal is the **highest intermediate rate a firm may use**,
+with the firm expected to justify it against the actual investments — a cap on
+the central case, not the top of the permitted range (1.1R requires lower,
+intermediate and higher to be shown, so 2/5/8 is the full span). The Handbook
+caps this number; it does not endorse it. Section 4 of
+[FINDINGS.md](FINDINGS.md) has the detail.
 
 That is UK-specific, authoritative, free, public, and it is the standard a
 regulator would measure the site against. For a tool whose selling point is
-transparency, "here is the regulator's own central assumption, and here is the
-box where you disagree with it" is a stronger position than any historical series.
+transparency, "here is the Handbook's own intermediate case, and here is the box
+where you disagree with it" is a stronger position than any historical series.
 
-It is also sobering. The prototype ran at 4.09% real. The FCA's central
-assumption is 2.94%. Same plan, both engines:
+It is also sobering. The prototype ran at 4.09% real. The Handbook's
+intermediate case is 2.94%. Same plan, both engines:
 
 | Assumption | Real return | Plan succeeds |
 |---|---:|---:|
 | Prototype's synthetic history | 4.09% | 46.4% |
-| **FCA centre** | **2.94%** | **35.9%** |
+| **FCA intermediate** | **2.94%** | **35.9%** |
 | FCA lower | 0.00% | 9.6% |
 | FCA higher | 5.88% | 70.2% |
 
 Sustainable income at 90% confidence drops from £21,717 to **£20,719** net real.
-Most consumer calculators default to something nearer the FCA's *higher* rate.
+Consumer calculators we looked at tended to default to something nearer the
+FCA's *higher* rate; we did not survey enough of them to say "most".
 
-Implemented as `FCAPrescribed` in `returns.py`. No dataset, no licence, no blocker.
+Implemented as `FCAPrescribed` in `returns.py` — a name kept for compatibility
+and corrected in its own docstring. No dataset, no licence, no blocker.
 
-**Caveat:** the FCA prescribes returns, not **volatility**. That number has no
+**Caveat:** the FCA caps returns and says nothing about **volatility**. That number has no
 regulatory backing and has to be a stated user assumption. Which leads to the trap
 below.
 
@@ -77,9 +90,9 @@ thing an independent site exists to do.
 | Source | Licence | Verified | Coverage | Verdict |
 |---|---|---|---|---|
 | **JST Macrohistory** (R6) | **CC BY-NC-SA 4.0** | Yes — stated on macrohistory.net | 18 countries, 1870–, returns on equities/bonds/bills/housing + CPI | Ready-made and excellent, but see below |
-| **BoE "Millennium of Macroeconomic Data"** (Thomas & Dimsdale 2017, v3.1) | datahub.io publishes it as **OGL v3.0** | **No — third-party assertion only** | UK, prices from 1209, rates from 1694, ~130 series | Best option *if* the licence holds |
+| **BoE "Millennium of Macroeconomic Data"** (Thomas & Dimsdale 2017, v3.1) | datahub.io publishes it as **OGL v3.0** | **No — third-party assertion only, and see below** | UK, prices from 1209, rates from 1694, ~130 series | Best option *if* the licence holds |
 | **ONS** (CPI/RPI) | OGL v3.0 | Standard ONS terms | UK inflation | Safe |
-| **FCA Handbook** COBS 13 Annex 2 | Public Handbook | Yes — fetched from the live Handbook | Prescribed rates | Safe to cite |
+| **FCA Handbook** COBS 13 Annex 2 | Public Handbook | Yes — fetched from the live Handbook | Maximum return rates; prescribed inflation | Safe to cite |
 | Barclays Equity Gilt Study | Proprietary | — | UK 1899– | Out |
 | DMS / UBS Global Investment Returns Yearbook | Proprietary (via Morningstar) | — | 35 countries 1900– | Out; headline stats citable, data isn't |
 | FTSE All-Share | FTSE Russell licence | — | — | Out |
@@ -118,13 +131,13 @@ One email settles it. Draft in `boe-licence-query.md`.
 
 **Ship v1 with no historical dataset at all.**
 
-FCA prescribed rates as the default engine, user-settable return and volatility,
+FCA projection rates as the default engine, user-settable return and volatility,
 and the arithmetic/geometric choice made explicit. That is:
 
 - zero licensing exposure, and no decision that forecloses future options
 - more defensible to a regulator than any series you could license
 - more transparent, which is the entire premise of the site
-- costing about two percentage points on a number already uncertain by twelve
+- costing about three percentage points on a number already uncertain by twelve
 
 **Then add historical bootstrap as a labelled second engine** once the Bank
 confirms the licence in writing. Use JST during development as a cross-check on
@@ -140,10 +153,37 @@ than from the licensing: engine sophistication was never where the value was.
   (price index plus dividend yield) — the field list wasn't reachable.
 - The JST variable schema in detail; the documentation PDF wouldn't fetch. The
   loader should detect columns rather than assume names.
-- Whether the FCA's prescribed rates are currently under review. They're
+- Whether the FCA's maximum rates are currently under review. They're
   periodically reset, and there was 2025–26 consultation activity I didn't chase
   down. Re-check the live Handbook before launch, and build the figures as
   configuration rather than constants — which `FCAPrescribed` already does.
+
+## G. The Bank of England licence position, as far as it is known
+
+**Researched 20 August 2026** from [bankofengland.co.uk/legal](https://www.bankofengland.co.uk/legal).
+All of it supports the decision above to ship without a historical dataset.
+
+1. **Bank material is not Crown copyright.** Copyright is owned by "the Governor
+   and Company of the Bank of England" — a distinct legal person, not a
+   government department. **The Open Government Licence therefore does not apply
+   by default.**
+2. **The Bank's OGL statement is scoped to the "Bank of England Database"**, the
+   interactive statistical database — not to research datasets. The research
+   datasets page carries **no licence statement at all**.
+3. **The default permission does not cover this use.** Download, display or
+   print "for personal use or internal use within an individual organisation for
+   non-commercial purposes". Publishing derived series on a website is neither.
+   Beyond that needs the Head of Communications Division.
+4. **There is precedent for carve-outs**: some exchange-rate series are excluded
+   from the Bank's OGL because they are "reproduced by the Bank under licence
+   from third parties". The Millennium dataset is a compilation drawn from many
+   academic sources.
+
+**So the datahub.io OGL v3.0 label is unsourced** — it links to the National
+Archives licence text but cites no Bank statement. Given point 1, the mirrors are
+not evidence of the Bank's position.
+
+Correspondence is tracked in [boe-licence-query.md](boe-licence-query.md).
 
 ## Sources
 
