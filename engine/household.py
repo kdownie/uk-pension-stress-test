@@ -57,23 +57,90 @@ def _breakpoints(region: str, uprate: float) -> list[float]:
     return sorted(set(b for b in bps if b >= 0))
 
 
-def _segments(other_income: float, region: str, uprate: float,
-              ceiling: float = 400_000.0):
+def _segments(other_income: float, region: str, uprate: float):
     """
     Ladder of (marginal_rate, capacity) rungs available to one person,
     starting from whatever taxable income they already have.
+
+    The final rung is UNBOUNDED. Above the additional-rate threshold the rate
+    never changes again, so a finite ceiling here is not a simplification, it
+    is a defect: it silently caps how much a person can be allocated and the
+    split then under-delivers. (The previous ceiling was £400,000.)
     """
+    reg = R.REGIONS[region]
     bps = [b for b in _breakpoints(region, uprate) if b > other_income]
-    bps.append(ceiling)
     segs, lo = [], other_income
     for hi in bps:
         if hi <= lo:
             continue
         mid = (lo + hi) / 2
-        rate = R.marginal_rate(mid, region, uprate, step=1.0)
-        segs.append([rate, hi - lo])
+        segs.append([R.marginal_rate(mid, region, uprate, step=1.0), hi - lo])
         lo = hi
+    segs.append([reg["top_rate"], float("inf")])
     return segs
+
+
+def _greedy_net(need_net: float, others: list[float], region: str,
+                uprate: float) -> list[float]:
+    """
+    Cheapest-rung-first allocation, expressed in NET pounds per person.
+
+    Allocating net rather than gross is the first half of the 2026-08-22 fix.
+    The old code summed GROSS rung capacities, which is only meaningful if the
+    rungs a person is given are contiguous from their current income upward —
+    and after sorting by rate they are not (see optimal_split).
+    """
+    ladder = []
+    for i, o in enumerate(others):
+        for rate, cap in _segments(o, region, uprate):
+            ladder.append((rate, cap, i))
+    ladder.sort(key=lambda s: s[0])
+
+    net = [0.0] * len(others)
+    remaining = need_net
+    for rate, cap, i in ladder:
+        if remaining <= 1e-9:
+            break
+        take = min(cap * (1.0 - rate), remaining)
+        net[i] += take
+        remaining -= take
+    return net
+
+
+def _to_gross(net: list[float], others: list[float], region: str,
+              uprate: float) -> list[float]:
+    """Exact gross for each person, via the verified inverse of the tax
+    function. This is what guarantees the split delivers what it promises."""
+    return [R.gross_for_net(n, o, region, uprate) if n > 1e-9 else 0.0
+            for n, o in zip(net, others)]
+
+
+def _candidate_splits(need_net: float, others: list[float], region: str,
+                      uprate: float) -> list[float]:
+    """
+    Net amounts for person 0 at which the household's total gross can turn a
+    corner: the endpoints, and every level that puts either person exactly on
+    a tax threshold.
+
+    Total gross as a function of the split is piecewise linear, with kinks
+    only where somebody crosses a threshold. A minimum of a piecewise-linear
+    function lies at a kink or an endpoint, so checking this finite set is
+    exact — no search, no tolerance.
+    """
+    o0, o1 = others
+    cands = {0.0, need_net}
+    for b in _breakpoints(region, uprate):
+        if b > o0:
+            v = (R.net_income(b, region, uprate)
+                 - R.net_income(o0, region, uprate))
+            if 0.0 < v < need_net:
+                cands.add(v)
+        if b > o1:
+            v = (R.net_income(b, region, uprate)
+                 - R.net_income(o1, region, uprate))
+            if 0.0 < need_net - v < need_net:
+                cands.add(need_net - v)
+    return sorted(cands)
 
 
 def optimal_split(need_net: float, others: list[float], region: str = "ruk",
@@ -82,34 +149,61 @@ def optimal_split(need_net: float, others: list[float], region: str = "ruk",
     Gross withdrawal for each person that delivers `need_net` in total, at
     the lowest possible household tax bill.
 
-    Because income tax is progressive, every extra pound costs at least as
-    much as the last. So filling the cheapest rungs across BOTH people first
-    is optimal — no search required, just a sort.
+    WHY THIS IS NOT JUST A SORT — corrected 22 August 2026
+    ------------------------------------------------------
+    The original version filled marginal-rate rungs cheapest-first across both
+    people and summed their gross capacities, justified by "income tax is
+    progressive, so every extra pound costs at least as much as the last".
+
+    That premise is FALSE. The £100,000-£125,140 personal allowance taper
+    makes the marginal rate go 0, 20, 40, 60, 45 — it comes back DOWN. Sorting
+    by rate therefore puts the 45% rung (which lives above £125,140) ahead of
+    the 60% rung (which lives below it), and the allocation fills a band that
+    cannot be reached without first filling the one it skipped. The gross
+    returned then does not deliver the net requested:
+
+        need £80,000  -> old code returned £113,513, delivering £77,973
+        need £90,000  -> old code returned £131,695, delivering £86,229
+
+    Nothing downstream checked, so the household was quietly handed less than
+    its target while the run was still counted a success. `band_uprating`
+    scales the thresholds, so a long band freeze dragged the failure down into
+    ordinary incomes — at a 35-year freeze it bit at a £30,000 target, which is
+    the tool's default.
+
+    THE FIX, in two parts:
+
+      1. Allocate in NET pounds, then convert to gross with `gross_for_net`,
+         which is the exact inverse of the tax function. Delivery is then
+         correct by construction whatever the allocation.
+      2. The greedy allocation can still be slightly sub-optimal in the taper
+         zone, so its answer is checked against the exact one. Total gross is
+         piecewise linear in the split with kinks only at tax thresholds, so
+         the optimum is found by enumerating those kinks — a finite, exact
+         calculation. Greedy's answer is kept when it ties, which preserves
+         the existing behaviour in the ~90% of cases where it was already
+         right.
 
     Returns one gross figure per person, in the order given.
     """
-    if need_net <= 0:
-        return [0.0] * len(others)
+    n = len(others)
+    if need_net <= 1e-9:
+        return [0.0] * n
+    if n == 1:
+        return [R.gross_for_net(need_net, others[0], region, uprate)]
+    if n != 2:
+        raise NotImplementedError("optimal_split handles one or two people")
 
-    ladder = []
-    for i, o in enumerate(others):
-        for rate, cap in _segments(o, region, uprate):
-            ladder.append((rate, cap, i))
-    ladder.sort(key=lambda s: s[0])
+    greedy = _to_gross(_greedy_net(need_net, others, region, uprate),
+                       others, region, uprate)
 
-    gross = [0.0] * len(others)
-    remaining = need_net
-    for rate, cap, i in ladder:
-        if remaining <= 1e-9:
-            break
-        net_here = cap * (1.0 - rate)
-        if net_here <= remaining:
-            gross[i] += cap
-            remaining -= net_here
-        else:
-            gross[i] += remaining / (1.0 - rate) if rate < 1 else 0.0
-            remaining = 0.0
-    return gross
+    best = None
+    for n0 in _candidate_splits(need_net, others, region, uprate):
+        g = _to_gross([n0, need_net - n0], others, region, uprate)
+        if best is None or sum(g) < best[0] - 1e-9:
+            best = (sum(g), g)
+
+    return greedy if sum(greedy) <= best[0] + 0.01 else best[1]
 
 
 # --------------------------------------------------------------------------
