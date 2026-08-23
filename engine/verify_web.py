@@ -119,6 +119,34 @@ async def main():
                 chk(f"{region} split of £{need:,} — partner A", js[0], py[0], 0.5)
                 chk(f"{region} split of £{need:,} — partner B", js[1], py[1], 0.5)
 
+        # The four cases above all sit below £100,000 of total income and all
+        # pass uprate=1, so none of them reaches the personal-allowance taper.
+        # That is the same blind spot section B of verify_household.py had, and
+        # it is why THIS cross-check could not see the 22 Aug split bug: with a
+        # fixed JS and a reverted Python the F3 grid above still agreed on every
+        # case. Two engines only help on the inputs you actually compare — and a
+        # band freeze scales the thresholds down, so the freeze is part of the
+        # input space, not a setting.
+        print()
+        for region in ("ruk", "scotland"):
+            for yrs in (0, 20, 35):
+                up = 1.0 / (1.03 ** yrs)
+                for need, oth in [(80_000, [0, 0]), (130_000, [0, 0]),
+                                  (60_000, [95_000, 0]), (90_000, [110_000, 5_000])]:
+                    js = await pg.evaluate(
+                        "a => optimalSplit(a[0],a[1],a[2],a[3])",
+                        [need, oth, region, up])
+                    py = optimal_split(need, [float(x) for x in oth], region, up)
+                    chk(f"{region} £{need:,} net, {yrs}yr freeze — A", js[0], py[0], 0.5)
+                    chk(f"{region} £{need:,} net, {yrs}yr freeze — B", js[1], py[1], 0.5)
+                    # and the split must actually deliver, in the JS too
+                    delivered = sum(
+                        R.net_income(float(o) + g, region, up)
+                        - R.net_income(float(o), region, up)
+                        for o, g in zip(oth, js))
+                    chk(f"{region} £{need:,} net, {yrs}yr freeze — JS delivers",
+                        delivered, float(need), 0.5)
+
         print("\nF4. DEATH SCENARIOS — JS vs PYTHON (the gap that hid a real bug)")
         print("=" * 86)
         # Every couple case above passes deathAge=0, so until this section
