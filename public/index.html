@@ -500,10 +500,20 @@ const netIncome = (g,u,reg)=> g - incomeTax(g,u,reg);
 const marginalRate=(inc,u,reg)=> incomeTax(inc+1,u,reg)-incomeTax(inc,u,reg);
 
 /* ---- tax-optimal income splitting across a couple ----
-   Income tax is progressive, so every extra pound costs at least as much as
-   the last. Filling the cheapest rungs across BOTH people first is therefore
-   optimal — it needs a sort, not a search. Verified against brute force in
-   verify_household.py. */
+   CORRECTED 22 August 2026. The original filled marginal-rate rungs
+   cheapest-first and summed their GROSS capacities, on the grounds that "every
+   extra pound costs at least as much as the last". That is false: the
+   £100,000–£125,140 allowance taper makes the marginal rate run 0, 20, 40, 60,
+   45 — it comes back down. Sorting by rate then places the 45% rung, which
+   lives above £125,140, ahead of the 60% rung below it, so the allocation fills
+   a band it cannot legally reach and the gross returned under-delivers the net
+   asked for. A long band freeze scales the thresholds down and drags the fault
+   into ordinary incomes.
+   Fixed in two parts: allocate in NET pounds and convert with grossForNet (the
+   exact inverse of the tax function), so delivery is right by construction; and
+   check greedy against the exact optimum, which can only sit at a tax threshold
+   because total gross is piecewise linear in the split. Mirrors optimal_split
+   in engine/household.py — the two engines must agree here. */
 function breakpoints(region, uprate){
   const reg=REGIONS[region], pa=RULES.personalAllowance*uprate;
   const bps=[0,pa]; let x=pa;
@@ -511,30 +521,67 @@ function breakpoints(region, uprate){
   bps.push(RULES.taperFrom*uprate, reg.topFrom*uprate);
   return [...new Set(bps)].sort((a,b)=>a-b);
 }
+/* Final rung is UNBOUNDED: above the top threshold the rate never changes
+   again, so a finite ceiling would silently cap the allocation. */
 function segments(other, region, uprate){
-  const bps=breakpoints(region,uprate).filter(b=>b>other).concat([400000]);
+  const reg=REGIONS[region];
+  const bps=breakpoints(region,uprate).filter(b=>b>other);
   const out=[]; let lo=other;
   for(const hi of bps){
     if(hi<=lo) continue;
     out.push([marginalRate((lo+hi)/2,uprate,region), hi-lo]);
     lo=hi;
   }
+  out.push([reg.topRate, Infinity]);
   return out;
 }
-function optimalSplit(needNet, others, region, uprate){
-  const gross=others.map(()=>0);
-  if(needNet<=0) return gross;
+function toGross(net, others, region, uprate){
+  return net.map((n,i)=> n>1e-9 ? grossForNet(n, others[i], uprate, region) : 0);
+}
+function greedyNet(needNet, others, region, uprate){
   const ladder=[];
   others.forEach((o,i)=> segments(o,region,uprate).forEach(([r,c])=>ladder.push([r,c,i])));
   ladder.sort((a,b)=>a[0]-b[0]);
+  const net=others.map(()=>0);
   let left=needNet;
   for(const [rate,cap,i] of ladder){
     if(left<=1e-9) break;
-    const netHere=cap*(1-rate);
-    if(netHere<=left){ gross[i]+=cap; left-=netHere; }
-    else { gross[i]+= rate<1 ? left/(1-rate) : 0; left=0; }
+    const take=Math.min(cap*(1-rate), left);
+    net[i]+=take; left-=take;
   }
-  return gross;
+  return net;
+}
+function candidateSplits(needNet, others, region, uprate){
+  const [o0,o1]=others, c=new Set([0,needNet]);
+  for(const b of breakpoints(region,uprate)){
+    if(b>o0){
+      const v=netIncome(b,uprate,region)-netIncome(o0,uprate,region);
+      if(v>0 && v<needNet) c.add(v);
+    }
+    if(b>o1){
+      const v=netIncome(b,uprate,region)-netIncome(o1,uprate,region);
+      if(needNet-v>0 && needNet-v<needNet) c.add(needNet-v);
+    }
+  }
+  return [...c].sort((a,b)=>a-b);
+}
+function optimalSplit(needNet, others, region, uprate){
+  const n=others.length;
+  if(needNet<=1e-9) return others.map(()=>0);
+  if(n===1) return [grossForNet(needNet, others[0], uprate, region)];
+
+  const greedy=toGross(greedyNet(needNet,others,region,uprate),others,region,uprate);
+  const greedyTotal=greedy.reduce((s,x)=>s+x,0);
+
+  let best=null;
+  for(const n0 of candidateSplits(needNet,others,region,uprate)){
+    const g=toGross([n0, needNet-n0], others, region, uprate);
+    const t=g[0]+g[1];
+    if(best===null || t<best[0]-1e-9) best=[t,g];
+  }
+  /* keep the existing allocation when it ties, so behaviour only changes
+     where it was actually wrong */
+  return greedyTotal<=best[0]+0.01 ? greedy : best[1];
 }
 
 /* Gross withdrawal needed to deliver `targetNet` on top of `other`.
