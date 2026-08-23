@@ -270,6 +270,75 @@ _free = Household(
 chk("no withdrawal needed -> no lifetime tax",
     float(simulate_household(_free, _rets).tax_paid.max()), 0.0)
 
+print("\nH. THE SPLIT MUST DELIVER WHAT IT PROMISES  (regression, 22 Aug 2026)")
+print("=" * 92)
+# The bug this pins: optimal_split used to sort marginal-rate rungs by rate and
+# sum their GROSS capacities. The £100,000-£125,140 allowance taper makes the
+# rate sequence 0, 20, 40, 60, 45 — non-monotonic — so the sort put the 45% rung
+# (above £125,140) ahead of the 60% rung (below it) and filled a band that
+# cannot be reached without first filling the one it skipped. The gross returned
+# then under-delivered, and nothing downstream noticed: the engine withdraws the
+# gross and counts the year a success either way.
+#
+# Section B did not catch it for the reason section F was missed — coverage, not
+# logic. B's grid stops at £90,000 of need and only ever runs uprate = 1.0, so
+# every case sat below the break point. THE FREEZE DIMENSION IS THE POINT: a
+# band freeze scales the thresholds down and drags the fault into ordinary
+# incomes. At a 35-year freeze it bit at a £30,000 target, which is the default
+# on the live page.
+_H_CASES = 0
+_H_WORST = 0.0
+for _region in ("ruk", "scotland"):
+    for _yrs in (0, 10, 20, 35):
+        _up = 1.0 / (1.03 ** _yrs)
+        for _others in ([0.0], [0.0, 0.0], [12_000.0], [12_000.0, 25_000.0],
+                        [95_000.0, 0.0], [110_000.0, 5_000.0],
+                        [R.STATE_PENSION_ANNUAL, R.STATE_PENSION_ANNUAL]):
+            for _need in (5_000, 30_000, 40_000, 60_000, 80_000, 90_000,
+                          150_000, 220_000):
+                _g = optimal_split(_need, _others, _region, _up)
+                _got = sum(R.net_income(o + g, _region, _up)
+                           - R.net_income(o, _region, _up)
+                           for o, g in zip(_others, _g))
+                _H_CASES += 1
+                _H_WORST = max(_H_WORST, abs(_got - _need))
+print(f"        {_H_CASES} splits across 2 regions x 4 band freezes x 7 income "
+      f"profiles x 8 targets")
+chk("every split delivers the net it was asked for", _H_WORST, 0.0)
+
+# The two cases that failed loudest before the fix, pinned by name so a
+# regression cannot hide inside an aggregate.
+for _need, _want_short in ((80_000, 2_027.0), (90_000, 3_771.0)):
+    _g = optimal_split(_need, [0.0], "ruk", 1.0)
+    _got = R.net_income(_g[0], "ruk", 1.0)
+    chk(f"single person, £{_need:,} net, no freeze", _got, float(_need))
+
+# The default target under a long freeze — the case that made this urgent.
+_g = optimal_split(30_000, [0.0], "ruk", 1.0 / (1.03 ** 35))
+chk("default £30,000 target, 35-year band freeze",
+    R.net_income(_g[0], "ruk", 1.0 / (1.03 ** 35)), 30_000.0)
+
+# Optimality, not merely feasibility: no other split may deliver the same net
+# for less gross. Brute force on a fine grid, inside the taper zone and under a
+# freeze — the region section B never reaches.
+_H_EXCESS = 0.0
+for _region in ("ruk", "scotland"):
+    for _yrs in (0, 20, 35):
+        _up = 1.0 / (1.03 ** _yrs)
+        for _others in ([0.0, 0.0], [95_000.0, 0.0], [20_000.0, 40_000.0]):
+            for _need in (45_000, 90_000, 130_000):
+                _mine = sum(optimal_split(_need, _others, _region, _up))
+                _best = min(
+                    (R.gross_for_net(_need * k / 400, _others[0], _region, _up)
+                     if k else 0.0)
+                    + (R.gross_for_net(_need - _need * k / 400, _others[1],
+                                       _region, _up) if k < 400 else 0.0)
+                    for k in range(401))
+                _H_EXCESS = max(_H_EXCESS, _mine - _best)
+chk("no cheaper split exists (brute force, taper zone + freeze)",
+    max(0.0, _H_EXCESS), 0.0, tol=1.0)
+
+
 print("\n" + "=" * 92)
 if fails:
     print(f"FAILED {len(fails)}: " + "; ".join(map(str, fails)))
