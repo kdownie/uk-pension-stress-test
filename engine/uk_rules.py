@@ -6,8 +6,10 @@ below, with a source URL and the date it was checked. Nothing is hard-coded
 further down. If a figure is not in that block with a source, it does not
 belong in this file.
 
-Scope: England, Wales and Northern Ireland. Scotland has different income
-tax bands and is NOT modelled here — see LIMITATIONS.
+Scope: England, Wales and Northern Ireland ("rUK") and Scotland — both are
+modelled, see REGIONS. Scotland sets the rates on non-savings,
+non-dividend income, which is what pension income is; the personal
+allowance stays UK-wide and tapers identically.
 """
 
 from __future__ import annotations
@@ -77,12 +79,19 @@ ASSUMPTIONS = {
 }
 
 LIMITATIONS = [
-    "Scotland: different income tax bands, not modelled.",
+    "Only pension-type income is modelled — non-savings, non-dividend. No "
+    "savings interest, no dividends, and so no ISAs, cash savings, Premium "
+    "Bonds or unwrapped holdings. Those carry their own allowances and "
+    "rates and would need a separate income type.",
     "No National Insurance — not charged on pension income, so correct here, "
     "but wrong the moment earned income is added.",
     "No MPAA, annual allowance or taper — this is a decumulation model only.",
     "No DB pensions, annuities, or death benefits.",
     "No pension IHT treatment.",
+    "Within a year, when retained tax-free cash covers part of the income, "
+    "the taxable withdrawal is scaled linearly rather than re-grossed exactly. "
+    "Exact when the cash covers none or all of the need; a simplification in "
+    "between. See the note in decumulation.py.",
     "Tax bands assumed to move with inflation by default. That is NOT current "
     "policy — see freeze_bands_until in DecumulationParams.",
     "Full State Pension assumed if state_pension_weekly is left at default. "
@@ -260,7 +269,7 @@ def pcls(pot: float, allowance_used: float = 0.0) -> float:
 
 def describe_assumptions() -> str:
     lines = [f"UK RULES — tax year {_a('tax_year')} "
-             f"(England/Wales/NI), checked 2026-08-15", ""]
+             f"(rUK and Scotland), checked 2026-08-15", ""]
     for k, v in ASSUMPTIONS.items():
         val = v["value"]
         val = f"{val:,.2f}" if isinstance(val, float) else str(val)
