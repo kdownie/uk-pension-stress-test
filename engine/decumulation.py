@@ -150,9 +150,11 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
         from_cash = np.minimum(cash, need_net)
         cash -= from_cash
         still_net = need_net - from_cash
-        # Re-gross only the remaining net requirement (linear approximation
-        # within the year is exact when from_cash is 0 or need_net; between
-        # those it is a mild simplification, flagged in LIMITATIONS).
+        # Re-gross only the remaining net requirement. The linear scaling is
+        # exact when from_cash is 0 or the whole need; between those it is a
+        # simplification. Disclosed in uk_rules.LIMITATIONS — an earlier
+        # version of this comment claimed that and it was not true, which is
+        # its own kind of bug: a comment asserting a disclosure nobody wrote.
         frac = np.where(need_net > 0, still_net / np.maximum(need_net, 1e-9), 0.0)
         draw = gross_needed * frac
 
