@@ -315,6 +315,16 @@ footer a{color:var(--s450)}
       <p class="hint">Tax-free cash spent elsewhere is not available to fund
         income later. In this model that changes the outcome more than any other
         single input.</p>
+
+      <label><span class="lbl">Tax-free cash kept back is held as</span>
+        <select id="pclsHeld">
+          <option value="cash" selected>cash or savings</option>
+          <option value="invested">invested, alongside the pension</option>
+        </select></label>
+      <p class="hint">Money kept back to fund income has to sit somewhere until
+        it is spent, and where it sits changes the answer. Cash earns the rate
+        set in the assumptions below; invested means it rides the same returns
+        as the pension.</p>
     </div>
 
   <!-- ============ RESULTS ============ -->
@@ -377,6 +387,12 @@ footer a{color:var(--s450)}
         <input type="range" id="real" min="-2" max="10" step="0.1" value="2.94"></label>
       <p class="hint" id="realNote">5% nominal less 2% inflation = <b>2.94% a year
         after inflation</b>.</p>
+
+      <label><span class="lbl">Return on cash kept back <span class="val" id="v_pclscash">0%</span></span>
+        <input type="range" id="pclsCash" min="-2" max="3" step="0.25" value="0"></label>
+      <p class="hint">Real, after inflation. 0% is the textbook assumption for
+        cash — savings that keep pace with inflation and no more. Only used
+        when tax-free cash is held as cash.</p>
 
       <label><span class="lbl">Volatility <span class="val" id="v_vol">15%</span></span>
         <input type="range" id="vol" min="0" max="30" step="1" value="15"></label>
@@ -683,6 +699,13 @@ function simulate(P){
       const g=1+Math.expm1(mu + P.vol*z[p*years+y]);
       potA*=g; potB*=g;
       if(potA<0) potA=0; if(potB<0) potB=0;
+      /* Retained tax-free cash grows too. Until 24 Aug 2026 it silently did
+         not — it sat at 0% while the pensions compounded, undisclosed. That
+         was an assumption, not a fact. "cash" at 0% real reproduces it and is
+         the textbook cash assumption; "invested" rides the same path as the
+         pensions. Mirrors pcls_held_as in the Python engines. */
+      if(P.pclsHeld==="invested") cash*=g;
+      else if(P.pclsCashReal) cash*=(1+P.pclsCashReal);
       bal[p*(years+1)+y+1]=potA+potB+cash;
     }
     if(!failed) succ++;
@@ -812,6 +835,7 @@ function readParams(){
     deathAge: couple ? +$("death").value : 0,
     survFrac: +$("surv").value/100,
     takePcls:$("pcls").checked, pclsSpend:$("pclsSpend").checked,
+    pclsHeld:$("pclsHeld").value, pclsCashReal:+$("pclsCash").value/100,
     real, vol:+$("vol").value/100, conv:$("conv").value,
     freeze:+$("freeze").value, paths:+$("paths").value, scen
   };
@@ -1076,7 +1100,7 @@ function run(){
   $("v_surv").textContent=(P.survFrac*100).toFixed(0)+"%";
   $("v_death").textContent = P.deathAge>0 ? "age "+P.deathAge : "never";
   $("v_inc").textContent=gbp(P.target);
-  $("v_vol").textContent=(P.vol*100).toFixed(0)+"%";
+  $("v_vol").textContent=(P.vol*100).toFixed(0)+"%"; $("v_pclscash").textContent=(P.pclsCashReal*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_freeze").textContent=P.freeze+(P.freeze===1?" year":" years");
   $("v_paths").textContent=P.paths.toLocaleString("en-GB");
   $("v_real").textContent=(P.real*100).toFixed(2)+"%";
