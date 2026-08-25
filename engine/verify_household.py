@@ -469,46 +469,87 @@ print(f"  {'PASS' if _ok else 'FAIL'}  "
       f"{_s15:>13,.2f} > {_s0:>13,.2f}")
 chk("SP growth of 0% is exactly the shipped default", _s0, _base)
 
-# 5. HOW THE TWO INTERACT - and this is the part with teeth.
+# 5. HOW THE TWO INTERACT — and the answer is that IN THE TAX CHANNEL THEY
+#    DO NOT, exactly, which is a stronger and more checkable statement than
+#    the one this section carried when it was first written.
 #
-#    In the BASIC-RATE band they are exactly independent, and that is not a
-#    coincidence: the State Pension already absorbs the whole personal
-#    allowance under any freeze, so every marginal pound is taxed at 20%
-#    whatever the bands do. An extra pound of State Pension then displaces
-#    exactly one pound of gross withdrawal. Difference-of-differences: zero.
+#    CORRECTION, 25 August 2026, same evening. The first version of this block
+#    asserted that "fiscal drag erodes the value of the triple lock", measured
+#    as a closing balance on a £3m pot: £83,202 of benefit at 2% inflation
+#    against £47,055 at 6%. That test PASSED, and it was measuring an
+#    artefact. At 6% with no State Pension growth THE POT DEPLETES, so its
+#    closing balance floors at zero and the comparison is against a censored
+#    number rather than a smaller one. Recorded rather than deleted, per 17a.
+#
+#    What is actually true, and is now asserted: an extra pound of State
+#    Pension displaces an extra pound of GROSS withdrawal, because both are
+#    taxed at the same marginal rate. So the lifetime saving equals the
+#    cumulative extra State Pension EXACTLY, and no tax parameter — inflation,
+#    freeze length, or region — can change it. That invariant is what would
+#    break if the band uprate ever reached the State Pension wrongly.
+_EXTRA_SP = sum(R.STATE_PENSION_ANNUAL * ((1.0075 ** y) - 1)
+                for y in range(35) if 60 + y >= 67)
+
+
+def _lifetime_gross(tgt, infl, spg, freeze, region="ruk"):
+    """Gross withdrawal needed over the horizon. No pot, so no depletion can
+    floor the answer, and no success threshold can bend it."""
+    total = 0.0
+    for y in range(35):
+        up = 1.0 / ((1.0 + infl) ** min(y, freeze))
+        oth = R.STATE_PENSION_ANNUAL * ((1.0 + spg) ** y) if 60 + y >= 67 else 0.0
+        need = max(0.0, tgt - R.net_income(oth, region, up))
+        total += R.gross_for_net(need, oth, region, up)
+    return total
+
+
+#    SCOPE NOTE, because it matters and is easy to misread: _lifetime_gross
+#    computes from uk_rules directly, so this invariant pins the TAX RULES,
+#    not the engine's use of them. Stripping sp_real_growth from
+#    simulate_household leaves this check passing — the two neighbouring
+#    checks (monotonicity, and compounding) are what catch that, and they do.
+#    Rules coverage and engine coverage are different things; this section
+#    needs both and has both.
+_inv_bad = []
+for _tgt in (18_000, 30_000, 55_000, 90_000):
+    for _infl in (0.0, 0.02, 0.06):
+        for _frz in (0, 20, 35):
+            for _reg in ("ruk", "scotland"):
+                _save = (_lifetime_gross(_tgt, _infl, 0.0, _frz, _reg)
+                         - _lifetime_gross(_tgt, _infl, 0.0075, _frz, _reg))
+                if abs(_save - _EXTRA_SP) > 1.0:
+                    _inv_bad.append((_tgt, _infl, _frz, _reg, _save))
+_ok = not _inv_bad
+if not _ok:
+    fails.append("SP growth does not displace withdrawal pound-for-pound")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'SP growth saves exactly the extra pension (72 cases)':<54} "
+      f"{_EXTRA_SP:>13,.2f} vs {_EXTRA_SP if _ok else _inv_bad[0][4]:>13,.2f}")
+
+#    The boundary, pinned so it is not mistaken for a failure later: once the
+#    State Pension nearly covers the target there is no withdrawal left to
+#    displace, so the saving is CAPPED by what was being withdrawn. Below the
+#    invariant holds; here it must not.
+_capped = (_lifetime_gross(14_000, 0.02, 0.0, 20)
+           - _lifetime_gross(14_000, 0.02, 0.0075, 20))
+_ok = 0 < _capped < _EXTRA_SP
+if not _ok:
+    fails.append("saving not capped when the State Pension covers the target")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'...but capped when SP nearly covers the target (£14k)':<54} "
+      f"{_capped:>13,.2f} <  {_EXTRA_SP:>12,.2f}")
+
+#    And the closing-balance gain EXCEEDS the withdrawal saved, because the
+#    pounds not withdrawn stay invested. Guarded against depletion, which is
+#    what censored the original test.
 _a = _closing(freeze=20, infl=0.02, spg=0.0)
 _b = _closing(freeze=20, infl=0.02, spg=0.0075)
-_c = _closing(freeze=20, infl=0.06, spg=0.0)
-_d = _closing(freeze=20, infl=0.06, spg=0.0075)
-chk("basic rate: SP growth worth the same at 2% and 6% inflation",
-    _b - _a, _d - _c, tol=0.01)
-
-#    ...but ONCE WITHDRAWALS REACH THE HIGHER RATE THEY MUST INTERACT, because
-#    a freeze drags the extra State Pension income into a higher marginal
-#    rate. If this came back zero, the band uprate would not be reaching the
-#    State Pension at all - which is exactly the class of bug section I was
-#    written to catch, and it would be invisible in the basic-rate case above.
-#
-#    It is also a real finding, and the engine should be able to show it:
-#    FISCAL DRAG ERODES THE VALUE OF THE TRIPLE LOCK. The two policies do not
-#    simply add - high inflation makes State Pension growth worth less at the
-#    same time as it makes frozen bands bite harder.
-def _big(infl, spg):
-    return float(simulate_household(Household(
-        people=[Person(pot=3_000_000, age=60,
-                       state_pension=R.STATE_PENSION_ANNUAL, sp_age=67)],
-        target_net_income=90_000, end_age=95,
-        band_freeze_years=20, assumed_inflation=infl,
-        sp_real_growth=spg), _R2).balances[0, -1])
-
-_lo = _big(0.02, 0.0075) - _big(0.02, 0.0)
-_hi = _big(0.06, 0.0075) - _big(0.06, 0.0)
-_ok = _lo > _hi > 0
+_ok = _a > 0 and _b > _a + _EXTRA_SP
 if not _ok:
-    fails.append("no fiscal-drag/triple-lock interaction at higher rate")
+    fails.append("compounding of the saved withdrawals not visible")
 print(f"  {'PASS' if _ok else 'FAIL'}  "
-      f"{'higher rate: SP growth worth LESS at 6% inflation':<54} "
-      f"{_lo:>13,.2f} > {_hi:>13,.2f}")
+      f"{'saved withdrawals compound (gain > the saving itself)':<54} "
+      f"{_b - _a:>13,.2f} >  {_EXTRA_SP:>12,.2f}")
 
 
 print("\n" + "=" * 92)
