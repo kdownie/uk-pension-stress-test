@@ -413,6 +413,22 @@ footer a{color:var(--s450)}
         <input type="range" id="freeze" min="0" max="35" step="1" value="0"></label>
       <p class="hint">Frozen bands shrink in real terms every year — "fiscal drag".
         Current policy is a freeze, so 0 is the optimistic setting.</p>
+
+      <label><span class="lbl">Inflation while bands are frozen
+        <span class="val" id="v_freezeInfl">3%</span></span>
+        <input type="range" id="freezeInfl" min="0" max="8" step="0.25" value="3"></label>
+      <p class="hint">How fast frozen bands shrink depends entirely on this. It was
+        fixed at 3% and not shown until 25 August 2026. The Bank of England's
+        target is 2%; UK inflation exceeded 8% as recently as 2022. Only used
+        when bands are frozen.</p>
+
+      <label><span class="lbl">State Pension growth above inflation
+        <span class="val" id="v_spGrowth">0%</span></span>
+        <input type="range" id="spGrowth" min="-1" max="2" step="0.1" value="0"></label>
+      <p class="hint">0% means the State Pension holds its value and no more —
+        which assumes the triple lock ends now. The triple lock uprates by the
+        higher of inflation, average earnings or 2.5%, so it delivers growth
+        above inflation in most years it survives.</p>
       <hr>
       <label><span class="lbl">Simulations <span class="val" id="v_paths">4,000</span></span>
         <input type="range" id="paths" min="500" max="20000" step="500" value="4000"></label>
@@ -488,6 +504,12 @@ const REGIONS = {
         bands:[[3967,.19],[12989,.20],[14136,.21],[31338,.42],[null,.45]],
         topRate:.48, topFrom:125140 }
 };
+/* inflation is PINNED to the intermediate 2% on purpose, and must stay pinned:
+   COBS 13 Annex 2 1.2R requires a personal pension projection to be in real
+   terms using the INTERMEDIATE rate of price inflation. The Python engine
+   exposes lower/higher (0%/4%) as inflation_scenario for research use; the page
+   deliberately does not. This is not the same number as the band-freeze
+   inflation above, which is a policy assumption and belongs to the user. */
 const FCA = { nominal:{lower:.02,centre:.05,higher:.08}, inflation:.02 };
 
 function personalAllowance(income){
@@ -637,6 +659,13 @@ function normals(n){
 function simulate(P){
   const years = P.end - P.retire;
   if(years<=0) return null;
+  // Defaults for callers that build a config by hand (the verification
+  // harness, saved scripts). These MIRROR the Python dataclass defaults —
+  // Plan.assumed_inflation = 0.03 and Plan.sp_real_growth = 0.0 — so the two
+  // engines agree on an omitted field as well as on a supplied one. The page
+  // itself always passes both explicitly, from controls the user can see.
+  const freezeInfl = (P.freezeInfl ?? 0.03);
+  const spGrowth   = (P.spGrowth   ?? 0.0);
   seedState = 987654321;
   const N = P.paths;
   const z = normals(N*years);
@@ -648,10 +677,18 @@ function simulate(P){
   const yearInfo=[];
   for(let y=0;y<years;y++){
     const age=P.retire+y, age2=P.retire2+y;
-    const uprate=1/Math.pow(1.03, Math.min(y,P.freeze));
+    // Was the literal 1.03 until 25 August 2026 — an undisclosed assumption
+    // governing the whole fiscal-drag result, worth ~7pp across 2%-4%.
+    // Mirrors assumed_inflation in the Python engines; the two must agree.
+    const uprate=1/Math.pow(1+freezeInfl, Math.min(y,P.freeze));
     const aliveB = couple && !(P.deathAge>0 && age2>=P.deathAge);
-    const others=[P.other + (age>=P.spAge ? P.sp : 0)];
-    if(aliveB) others.push(P.other2 + (age2>=P.spAge2 ? P.sp2 : 0));
+    // State Pension growth ABOVE inflation, compounding from the start of the
+    // projection. 0 reproduces the pre-25-August-2026 behaviour exactly — which
+    // was the silent assumption that the triple lock ends immediately.
+    // Mirrors sp_real_growth in the Python engines.
+    const spg=Math.pow(1+spGrowth, y);
+    const others=[P.other + (age>=P.spAge ? P.sp*spg : 0)];
+    if(aliveB) others.push(P.other2 + (age2>=P.spAge2 ? P.sp2*spg : 0));
     // A survivor's costs do not halve — see survivorFraction.
     const target = (couple && !aliveB) ? P.target*P.survFrac : P.target;
     const netOther = others.reduce((s,o)=>s+netIncome(o,uprate,P.region),0);
@@ -837,7 +874,9 @@ function readParams(){
     takePcls:$("pcls").checked, pclsSpend:$("pclsSpend").checked,
     pclsHeld:$("pclsHeld").value, pclsCashReal:+$("pclsCash").value/100,
     real, vol:+$("vol").value/100, conv:$("conv").value,
-    freeze:+$("freeze").value, paths:+$("paths").value, scen
+    freeze:+$("freeze").value, freezeInfl:+$("freezeInfl").value/100,
+    spGrowth:+$("spGrowth").value/100,
+    paths:+$("paths").value, scen
   };
 }
 
@@ -1065,7 +1104,8 @@ function assumptionsBlock(P,r){
   effective marginal rate of ${(marginalRate(110000,1,P.region)*100).toFixed(0)}% in
   that zone. Band widths stack on whatever allowance survives that taper, which is
   the bit the published rate tables obscure. Bands ${P.freeze
-    ? `frozen for ${P.freeze} years, then rising with inflation`
+    ? `frozen for ${P.freeze} years at <b>${(P.freezeInfl*100).toFixed(2)
+        .replace(/\.?0+$/,"")}% assumed inflation</b>, then rising with inflation`
     : "assumed to rise with inflation, which is not current policy"}.
   <a href="${P.region==="scotland"?RULES.src.sco:RULES.src.tax}">Source</a>.</p>
   ${P.couple ? `<p><b>Household.</b> Two pots, two State Pensions, two personal
@@ -1084,8 +1124,14 @@ function assumptionsBlock(P,r){
        ${gbp(RULES.lumpSumAllowance)} lump sum allowance, and
        ${P.pclsSpend?"<b>spent on something else</b>":"kept back to fund income tax-free"}.`
     : "not taken."} <a href="${RULES.src.lsa}">Source</a>.</p>
-  <p><b>State Pension.</b> ${gbp(P.sp)} a year from age ${P.spAge}, taxable, rising
-  with inflation. <a href="${RULES.src.sp}">Source</a>.</p>
+  <p><b>State Pension.</b> ${gbp(P.sp)} a year from age ${P.spAge}, taxable,
+  ${P.spGrowth
+    ? `rising <b>${(P.spGrowth*100).toFixed(1).replace(/\.0$/,"")}% a year above
+       inflation</b>`
+    : `rising with inflation and no more — <b>which is not current policy</b>. The
+       triple lock uprates the State Pension by the higher of inflation, average
+       earnings growth or 2.5%, so 0% is the assumption that it ends now`}.
+  <a href="${RULES.src.sp}">Source</a>.</p>
   <p><b>Method.</b> ${r.N.toLocaleString("en-GB")} simulations, ${r.years} years each,
   all in today's money. Income is drawn before that year's growth is applied —
   the cautious convention. Tax-free cash is spent before taxable withdrawals. For a couple, both pots experience the same investment returns each year — one household, one market.</p>`;
@@ -1102,6 +1148,8 @@ function run(){
   $("v_inc").textContent=gbp(P.target);
   $("v_vol").textContent=(P.vol*100).toFixed(0)+"%"; $("v_pclscash").textContent=(P.pclsCashReal*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_freeze").textContent=P.freeze+(P.freeze===1?" year":" years");
+  $("v_freezeInfl").textContent=(P.freezeInfl*100).toFixed(2).replace(/\.?0+$/,"")+"%";
+  $("v_spGrowth").textContent=(P.spGrowth*100).toFixed(1).replace(/\.0$/,"")+"%";
   $("v_paths").textContent=P.paths.toLocaleString("en-GB");
   $("v_real").textContent=(P.real*100).toFixed(2)+"%";
   $("s_end").textContent=P.end;
