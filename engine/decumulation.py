@@ -50,6 +50,14 @@ class Plan:
     band_freeze_years: int = 0               # years bands stay nominally frozen
     region: str = "ruk"                      # "ruk" or "scotland"
     assumed_inflation: float = 0.03          # only used for the band freeze
+    # State Pension growth ABOVE inflation, per year, compounding from the start
+    # of the projection. 0.0 reproduces the behaviour shipped before 25 August
+    # 2026 — which was not a neutral choice but the silent assumption that the
+    # triple lock ends immediately and the State Pension is thereafter uprated
+    # by CPI exactly, for the whole horizon. Current policy is the triple lock:
+    # the higher of CPI, average earnings growth, or 2.5%. Worth ~5.7pp at
+    # 0.75%/yr on the default scenario. Mirrors spGrowth in public/index.html.
+    sp_real_growth: float = 0.0
 
     @property
     def years(self) -> int:
@@ -147,7 +155,8 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
 
         other = plan.other_taxable_income
         if age >= plan.state_pension_age:
-            other += plan.state_pension_annual
+            other += plan.state_pension_annual * (
+                (1.0 + plan.sp_real_growth) ** y)
 
         net_from_other = R.net_income(other, plan.region, uprate)
         need_net = max(0.0, plan.target_net_income - net_from_other)

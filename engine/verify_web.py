@@ -272,6 +272,112 @@ async def main():
             if n != 1:
                 fails.append(f"control {sel} missing")
 
+        # ==================================================================
+        # F6. THE TWO POLICY ASSUMPTIONS — JS vs PYTHON
+        #
+        # Until 25 August 2026 the band-freeze inflation rate lived in the JS
+        # as the literal 1.03 while Python carried it as a named parameter,
+        # and State Pension real growth existed in NEITHER engine. Section 31
+        # of the project notes calls that class of gap out: a constant only
+        # one engine can express is a constant no cross-check is checking.
+        #
+        # Deterministic (zero volatility) so every number is exact and no
+        # tolerance band can hide a discrepancy.
+        # ==================================================================
+        print("\nF6. BAND-FREEZE INFLATION AND STATE PENSION GROWTH — JS vs PYTHON")
+        print("=" * 86)
+
+        def _cfg6(freeze, infl, spg):
+            return dict(pot=400_000, retire=60, end=95, target=20_000,
+                        sp=12_548, spAge=67, other=0, takePcls=False,
+                        pclsSpend=False, pclsHeld="cash", pclsCashReal=0.0,
+                        real=0.0294, vol=0.0, conv="geo", freeze=freeze,
+                        freezeInfl=infl, spGrowth=spg, paths=1, couple=False,
+                        region="ruk", pot2=0, retire2=0, sp2=0, spAge2=200,
+                        other2=0, deathAge=0, survFrac=0.67)
+
+        def _py6(freeze, infl, spg):
+            plan = Plan(pot=400_000, retire_age=60, end_age=95,
+                        target_net_income=20_000, state_pension_age=67,
+                        state_pension_annual=12_548, take_pcls=False,
+                        band_freeze_years=freeze, assumed_inflation=infl,
+                        sp_real_growth=spg)
+            return float(simulate(plan, np.full((1, 35), 0.0294)).balances[0, -1])
+
+        _cases = [("default — 3% infl, 0% SP growth", 20, 0.03, 0.0),
+                  ("freeze inflation 2%",             20, 0.02, 0.0),
+                  ("freeze inflation 6%",             20, 0.06, 0.0),
+                  ("SP growth 0.75%",                  0, 0.03, 0.0075),
+                  ("SP growth 1.5% under a freeze",   20, 0.03, 0.015)]
+        _got = {}
+        for _lab, _fz, _if, _sg in _cases:
+            _js = await pg.evaluate(
+                "cfg => { const r=simulate(cfg); return r.bal[r.years]; }",
+                _cfg6(_fz, _if, _sg))
+            _py = _py6(_fz, _if, _sg)
+            _got[_lab] = (_js, _py)
+            chk(f"closing balance — {_lab}", _js, _py, 1.0)
+
+        # EFFECT ASSERTIONS. Agreement alone is not enough: if a parameter were
+        # dropped on the floor by BOTH engines they would agree perfectly and
+        # every comparison above would still pass. So assert the answer MOVES,
+        # separately in each engine. (F5 learned this the hard way — stripping
+        # the growth code from both engines left every comparison passing.)
+        for _eng, _i in (("JS", 0), ("Python", 1)):
+            _lo = _got["freeze inflation 6%"][_i]
+            _mid = _got["default — 3% infl, 0% SP growth"][_i]
+            _hi = _got["freeze inflation 2%"][_i]
+            ok = _hi > _mid > _lo
+            print(f"  {'PASS' if ok else 'FAIL'}  {_eng + ' — freeze inflation changes the answer':<52}"
+                  f"{_hi:>13,.0f} > {_mid:>11,.0f} > {_lo:>11,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: freezeInfl made no difference")
+
+            _s0 = _got["default — 3% infl, 0% SP growth"][_i]
+            _s15 = _got["SP growth 1.5% under a freeze"][_i]
+            ok = _s15 > _s0
+            print(f"  {'PASS' if ok else 'FAIL'}  {_eng + ' — SP growth changes the answer':<52}"
+                  f"{_s15:>13,.0f} > {_s0:>11,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: spGrowth made no difference")
+
+        # An omitted field must fall back to the Python dataclass default, or
+        # the two engines disagree about a config neither of them rejects.
+        _bare = _cfg6(20, 0.03, 0.0)
+        del _bare["freezeInfl"], _bare["spGrowth"]
+        _js_bare = await pg.evaluate(
+            "cfg => { const r=simulate(cfg); return r.bal[r.years]; }", _bare)
+        chk("omitted fields fall back to the Python defaults",
+            _js_bare, _py6(20, 0.03, 0.0), 1.0)
+
+        # And both controls must exist on the page, wired to the engine.
+        for sel in ("#freezeInfl", "#spGrowth"):
+            n = await pg.evaluate(f"document.querySelectorAll('{sel}').length")
+            print(f"  {'PASS' if n == 1 else 'FAIL'}  control {sel:<14} "
+                  f"{'present' if n == 1 else 'MISSING'}")
+            if n != 1:
+                fails.append(f"control {sel} missing")
+
+        # The disclosure is part of the fix, not decoration: section 31 found
+        # the State Pension paragraph asserting "rising with inflation" with
+        # none of the caveat the bands paragraph one block earlier carries.
+        # SCOPED TO THE STATE PENSION PARAGRAPH, deliberately. Checking the
+        # whole assumptions block for "not current policy" passes on the BANDS
+        # paragraph alone — the removal test caught that, which is what removal
+        # tests are for.
+        _sp_para = await pg.evaluate("""() => {
+            const ps = [...document.querySelectorAll('#assump p')];
+            const p = ps.find(x => x.textContent.trim().startsWith('State Pension.'));
+            return p ? p.textContent : ''; }""")
+        for _phrase, _why in (("not current policy", "caveat in the SP paragraph"),
+                              ("triple lock", "triple lock named"),
+                              ("2.5%", "the 2.5% floor stated")):
+            ok = _phrase in _sp_para
+            print(f"  {'PASS' if ok else 'FAIL'}  disclosure: {_why:<38} "
+                  f"{'present' if ok else 'MISSING'}")
+            if not ok:
+                fails.append(f"disclosure missing: {_why}")
+
         print("\nG. PAGE HEALTH")
         print("=" * 86)
         for sel, label in [("#s_succ", "success rate"), ("#s_safe", "safe income"),

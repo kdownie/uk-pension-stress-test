@@ -231,6 +231,9 @@ class Household:
     region: str = "ruk"
     band_freeze_years: int = 0
     assumed_inflation: float = 0.03
+    # See Plan.sp_real_growth — the two engines must agree. 0.0 reproduces the
+    # behaviour shipped before 25 August 2026: the triple lock assumed gone.
+    sp_real_growth: float = 0.0
     # See DecumulationParams/Plan.pcls_held_as — the two engines must agree.
     # "cash" with pcls_cash_real = 0.0 reproduces the behaviour shipped before
     # 24 August 2026, where retained tax-free cash silently earned nothing.
@@ -312,7 +315,8 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
             if p.dies_at_age is not None and a >= p.dies_at_age:
                 continue
             idx.append(j)
-            others.append(p.other_income + (p.state_pension
+            _spg = (1.0 + hh.sp_real_growth) ** y
+            others.append(p.other_income + (p.state_pension * _spg
                                             if a >= p.sp_age else 0.0))
         alive = idx
         if not alive:

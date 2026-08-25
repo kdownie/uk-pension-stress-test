@@ -408,6 +408,109 @@ for _lab, _kw in (("PCLS spent", dict(take_pcls=True, pcls_spent=True)),
         float(_b.balances[0, -1]), float(_a.balances[0, -1]))
 
 
+# ==========================================================================
+# J. THE TWO POLICY ASSUMPTIONS — deterministic, zero volatility
+#
+# Both were hard-coded and undisclosed until 25 August 2026: the band-freeze
+# inflation rate (a literal 1.03 in the JS) and State Pension real growth
+# (absent from both engines, which silently assumed the triple lock ends now).
+#
+# Section I's lesson, restated: agreement is necessary and NOT sufficient. A
+# setting both engines ignore identically passes every cross-engine check ever
+# written. So each block below asserts the value MOVES the answer, and in the
+# right direction, on top of pinning the exact figures.
+#
+# Zero volatility throughout, so every read-out is exact and seed-free.
+# ==========================================================================
+print("\nJ. BAND-FREEZE INFLATION AND STATE PENSION GROWTH")
+print("=" * 92)
+
+
+def _closing(freeze=0, infl=0.03, spg=0.0):
+    """Closing balance on one deterministic path."""
+    return float(simulate_household(Household(
+        people=[Person(pot=400_000, age=60,
+                       state_pension=R.STATE_PENSION_ANNUAL, sp_age=67)],
+        target_net_income=20_000, end_age=95,
+        band_freeze_years=freeze, assumed_inflation=infl,
+        sp_real_growth=spg), _R2).balances[0, -1])
+
+
+# 1. THE DEFAULTS MUST REPRODUCE THE SHIPPED ENGINE EXACTLY. If either default
+#    moved, every published figure would move with it.
+_base = _closing()
+chk("defaults reproduce shipped behaviour (3% infl, 0% SP growth)",
+    _closing(infl=0.03, spg=0.0), _base)
+
+# 2. The inflation rate is INERT when bands are not frozen. It has no business
+#    touching a projection that never freezes anything.
+chk("freeze inflation inert when freeze = 0 (2%)", _closing(infl=0.02), _base)
+chk("freeze inflation inert when freeze = 0 (6%)", _closing(infl=0.06), _base)
+
+# 3. Under a freeze it must BITE, and harder at higher inflation. Higher
+#    inflation shrinks the real bands faster, so more tax and a smaller pot.
+_f2, _f3, _f6 = (_closing(freeze=20, infl=i) for i in (0.02, 0.03, 0.06))
+_ok = _f2 > _f3 > _f6
+if not _ok:
+    fails.append("freeze inflation not monotonic")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'higher freeze inflation leaves less (2% > 3% > 6%)':<54} "
+      f"{_f2:>13,.2f} > {_f6:>13,.2f}")
+chk("...and 3% is strictly worse than 2%", float(_f3 < _f2), 1.0)
+
+# 4. State Pension growth must HELP, monotonically, and it is not inert -
+#    it applies whether or not bands are frozen.
+_s0, _s075, _s15 = (_closing(spg=g) for g in (0.0, 0.0075, 0.015))
+_ok = _s15 > _s075 > _s0
+if not _ok:
+    fails.append("SP growth not monotonic")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'more SP growth leaves more (1.5% > 0.75% > 0%)':<54} "
+      f"{_s15:>13,.2f} > {_s0:>13,.2f}")
+chk("SP growth of 0% is exactly the shipped default", _s0, _base)
+
+# 5. HOW THE TWO INTERACT - and this is the part with teeth.
+#
+#    In the BASIC-RATE band they are exactly independent, and that is not a
+#    coincidence: the State Pension already absorbs the whole personal
+#    allowance under any freeze, so every marginal pound is taxed at 20%
+#    whatever the bands do. An extra pound of State Pension then displaces
+#    exactly one pound of gross withdrawal. Difference-of-differences: zero.
+_a = _closing(freeze=20, infl=0.02, spg=0.0)
+_b = _closing(freeze=20, infl=0.02, spg=0.0075)
+_c = _closing(freeze=20, infl=0.06, spg=0.0)
+_d = _closing(freeze=20, infl=0.06, spg=0.0075)
+chk("basic rate: SP growth worth the same at 2% and 6% inflation",
+    _b - _a, _d - _c, tol=0.01)
+
+#    ...but ONCE WITHDRAWALS REACH THE HIGHER RATE THEY MUST INTERACT, because
+#    a freeze drags the extra State Pension income into a higher marginal
+#    rate. If this came back zero, the band uprate would not be reaching the
+#    State Pension at all - which is exactly the class of bug section I was
+#    written to catch, and it would be invisible in the basic-rate case above.
+#
+#    It is also a real finding, and the engine should be able to show it:
+#    FISCAL DRAG ERODES THE VALUE OF THE TRIPLE LOCK. The two policies do not
+#    simply add - high inflation makes State Pension growth worth less at the
+#    same time as it makes frozen bands bite harder.
+def _big(infl, spg):
+    return float(simulate_household(Household(
+        people=[Person(pot=3_000_000, age=60,
+                       state_pension=R.STATE_PENSION_ANNUAL, sp_age=67)],
+        target_net_income=90_000, end_age=95,
+        band_freeze_years=20, assumed_inflation=infl,
+        sp_real_growth=spg), _R2).balances[0, -1])
+
+_lo = _big(0.02, 0.0075) - _big(0.02, 0.0)
+_hi = _big(0.06, 0.0075) - _big(0.06, 0.0)
+_ok = _lo > _hi > 0
+if not _ok:
+    fails.append("no fiscal-drag/triple-lock interaction at higher rate")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'higher rate: SP growth worth LESS at 6% inflation':<54} "
+      f"{_lo:>13,.2f} > {_hi:>13,.2f}")
+
+
 print("\n" + "=" * 92)
 if fails:
     print(f"FAILED {len(fails)}: " + "; ".join(map(str, fails)))
