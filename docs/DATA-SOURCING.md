@@ -1,5 +1,13 @@
 # The data question
 
+> **RESOLVED 25 August 2026 — read §H first.** The Bank of England answered,
+> and the answer changes two conclusions in this document. The licence question
+> is closed (permission granted, non-commercial, full citation). The equity
+> plan is dead: the dataset's only share price index runs **1962–2017 and
+> carries no dividend yield**, so total returns cannot be built from it.
+> Corrections are marked inline and set out in full in §H. Nothing is deleted,
+> per §17a of the project notes.
+
 **15 August 2026.** Last session I called data "the real blocker." Having gone at
 it properly, that was half right. It splits into two problems, and only the small
 one actually needs a dataset.
@@ -90,7 +98,7 @@ thing an independent site exists to do.
 | Source | Licence | Verified | Coverage | Verdict |
 |---|---|---|---|---|
 | **JST Macrohistory** (R6) | **CC BY-NC-SA 4.0** | Yes — stated on macrohistory.net | 18 countries, 1870–, returns on equities/bonds/bills/housing + CPI | Ready-made and excellent, but see below |
-| **BoE "Millennium of Macroeconomic Data"** (Thomas & Dimsdale 2017, v3.1) | datahub.io publishes it as **OGL v3.0** | **No — third-party assertion only, and see below** | UK, prices from 1209, rates from 1694, ~130 series | Best option *if* the licence holds |
+| **BoE "Millennium of Macroeconomic Data"** (Thomas & Dimsdale 2017, v3.1) | ~~datahub.io publishes it as OGL v3.0~~ **NOT OGL. Written permission from the author, 25 Aug 2026: non-commercial, full citation** | **Yes — §H** | UK, prices from 1209, rates from 1694, ~130 series. **Equities: one price index, 1962–2017, no dividend yield** | ~~Best option if the licence holds~~ **Right source for inflation and rates. Wrong source for equity returns — §H** |
 | **ONS** (CPI/RPI) | OGL v3.0 | Standard ONS terms | UK inflation | Safe |
 | **FCA Handbook** COBS 13 Annex 2 | Public Handbook | Yes — fetched from the live Handbook | Maximum return rates; prescribed inflation | Safe to cite |
 | Barclays Equity Gilt Study | Proprietary | — | UK 1899– | Out |
@@ -113,7 +121,8 @@ A free, ad-free public information site is very likely within the NonCommercial
 boundary. But "very likely" is doing real work in that sentence, and the boundary
 is genuinely fuzzy in CC's own guidance.
 
-### The BoE option, and its one open question
+### The BoE option, and its one open question  
+*(ANSWERED 25 August 2026 — see §H. Both halves of this section turned out wrong.)*
 
 Open Government Licence v3.0 permits commercial use, redistribution and adaptation
 with attribution — everything JST forbids. If the BoE dataset really is OGL, it's
@@ -126,6 +135,14 @@ page. That's not good enough to build on. It also needs total returns
 *constructed* from a price index plus dividend yield, rather than supplied.
 
 One email settles it. Draft in `boe-licence-query.md`.
+
+> **It did settle it, and against this section on both counts.** The dataset is
+> **not** OGL — copyright sits with the Governor and Company, and the permission
+> granted is explicitly **non-commercial**, so the "strictly better than JST"
+> argument below has no premise left: on the commercial axis the two sources are
+> now identical. And the total-return construction this section assumed was
+> merely *needed* turns out to be **impossible** from the Millennium data alone.
+> §H has the detail.
 
 ## Recommendation
 
@@ -140,7 +157,16 @@ and the arithmetic/geometric choice made explicit. That is:
 - costing about three percentage points on a number already uncertain by twelve
 
 **Then add historical bootstrap as a labelled second engine** once the Bank
-confirms the licence in writing. Use JST during development as a cross-check on
+confirms the licence in writing.
+
+> **The Bank confirmed in writing on 25 August 2026, and the bootstrap still
+> should not be built from this dataset — see §H.** The first half of this
+> recommendation ("ship v1 with no historical dataset at all") was right and
+> remains right. The second half rested on the licence being the only obstacle.
+> It was not: the data itself cannot support the job. If a historical engine is
+> ever wanted, **JST is now the shorter path** — total returns supplied, back to
+> 1870, and its non-commercial term is no worse than the one already accepted
+> from the Bank. Use JST during development as a cross-check on
 your own construction — never shipped, so NC never bites.
 
 This inverts the original plan, and it follows from the prototype result rather
@@ -148,9 +174,14 @@ than from the licensing: engine sophistication was never where the value was.
 
 ## What I could not verify
 
-- The BoE licence, from a Bank primary source. Treat OGL as unconfirmed.
-- Whether the BoE dataset contains enough to build equity **total** returns
-  (price index plus dividend yield) — the field list wasn't reachable.
+- ~~The BoE licence, from a Bank primary source. Treat OGL as unconfirmed.~~
+  **RESOLVED 25 Aug 2026 — §H. Not OGL; written permission, non-commercial.**
+- ~~Whether the BoE dataset contains enough to build equity **total** returns
+  (price index plus dividend yield) — the field list wasn't reachable.~~
+  **RESOLVED 25 Aug 2026 — §H. It does not. Price index only, 1962–2017.**
+  This was the single most consequential unverified item in the file, and it
+  was checked only after ten days were spent obtaining a licence for the data
+  it turned out to disqualify. **Check the fields before chasing the rights.**
 - The JST variable schema in detail; the documentation PDF wouldn't fetch. The
   loader should detect columns rather than assume names.
 - Whether the FCA's maximum rates are currently under review. They're
@@ -159,6 +190,13 @@ than from the licensing: engine sophistication was never where the value was.
   configuration rather than constants — which `FCAPrescribed` already does.
 
 ## G. The Bank of England licence position, as far as it is known
+
+> **SUPERSEDED 25 August 2026 by §H — but every point below was correct.** The
+> reasoning here, worked out from the Bank's published terms before any reply
+> arrived, predicted the answer exactly: not Crown copyright, not OGL, not
+> covered by the default permission. Kept in full because getting this right in
+> advance is what made the query worth sending, and what stopped the datahub.io
+> label from being trusted.
 
 **Researched 20 August 2026** from [bankofengland.co.uk/legal](https://www.bankofengland.co.uk/legal).
 All of it supports the decision above to ship without a historical dataset.
@@ -192,3 +230,109 @@ Correspondence is tracked in [boe-licence-query.md](boe-licence-query.md).
 - [A Millennium of Macroeconomic Data for the UK — datahub.io](https://datahub.io/economic-history/millennium-macroeconomic-data-uk)
 - [Bank of England — Research datasets](https://www.bankofengland.co.uk/statistics/research-datasets)
 - [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
+
+---
+
+## H. What the Bank actually said, and what the file actually holds
+
+**25 August 2026.** Both open questions closed in one evening, and the two
+answers point in opposite directions.
+
+### H1. The licence — granted
+
+Ryland Thomas, one of the dataset's two authors, replied to the 20 August
+follow-up. Correspondence in `boe-licence-query.md`.
+
+- Publishing a **derived** total-return series built from the data:
+  *"absolutely fine."*
+- Reproducing the **series themselves**: *"usually fine... provided it is for
+  non-commercial purposes and that you acknowledge the source."* Broader than
+  what was asked for.
+- **No carve-outs named.** The Bank holds permissions from the original authors
+  "as far as possible", on a non-commercial, full-citation basis.
+- **Attribution is three-part**: the Thomas & Dimsdale reference from the
+  workbook's front page, *plus* the original published reference for each
+  underlying raw series used, *plus* a citation of the spreadsheet.
+- The next version may carry an **explicit open licence**.
+
+**Two conditions: non-commercial, and full citation.** The first costs this
+project nothing — design rule 6 already bans affiliate links, referrals and
+sponsorship permanently. The live edge case is hosting costs; ask before acting.
+
+**One trap.** The repo is MIT, which grants downstream commercial rights that
+this permission does not include. **Do not commit the data into an MIT repo.**
+Ship a script that downloads the workbook from the Bank's own URL and builds the
+series locally, with a pinned checksum — nothing is redistributed, so the
+conflict never arises.
+
+### H2. The data — inadequate for equities, excellent for everything else
+
+The Millennium dataset's **only** equity series is a *Share Price Index
+(weighted by market capitalisation)*, monthly, **April 1962 → February 2017**.
+
+**Two independent problems, either fatal alone:**
+
+1. **It is a price index, so there are no total returns.** Dividends are a large
+   part of UK equity return over the long run. Treating a price index as a
+   total-return series would understate the compound real return by several
+   points a year — against a **±1%/yr assumption already worth ±12pp** (§5).
+   Worse than the FCA-rates engine that ships today.
+2. **The binding case is outside the span.** `FINDINGS.md`: *"the worst British
+   starting year, 1900, ran dry after 26 years."* **1900 is 62 years before the
+   data begins.** Fifty-five years of returns gives **one** independent 30-year
+   window. A withdrawal test on 1962–2017 returns a more optimistic answer than
+   the truth, and looks authoritative doing it.
+
+**So the 4%-rule finding cannot be brought in-house on this data.** It stays
+correctly cited to Pfau (2010) and DMS.
+
+### H3. Where the permission does pay out
+
+**Inflation, not equities** — and against a bigger effect.
+
+The equity ask was *"give me an unbiased long-run return distribution"*, which
+needs total returns and the worst episodes. The inflation ask is far weaker:
+*what range should a disclosed, user-adjustable control span, and what has a
+sustained stretch of UK inflation looked like?* That needs a long, well-built UK
+price series, which is the single thing this dataset is best at.
+
+It aims at **fiscal drag, −6.8pp in §5** — three times the +2.2pp the equity
+bootstrap was chasing. On 25 August the band-freeze inflation rate and State
+Pension real growth were both exposed as user controls (§29–§32); **sourcing
+their ranges and defaults from this dataset is the outstanding work, and it is
+what the permission is for.**
+
+**The regime objection stands.** Do not bootstrap 1209 into a 2026 projection.
+Use it to bound a disclosed assumption, and for labelled historical what-ifs.
+
+### H4. The comparison, redone
+
+| | BoE Millennium v3.1 | JST Macrohistory R6 |
+|---|---|---|
+| UK equity **total** returns | **No** — price index only | **Yes**, supplied |
+| Span | 1962–2017 | **1870–** |
+| Commercial use | **No** | **No** |
+| ShareAlike | No | **Yes** |
+| Covers 1900 | **No** | **Yes** |
+| Long-run UK inflation, rates, wages | **Yes, centuries** | Limited |
+
+**JST is better on every axis except ShareAlike** — and the download-the-recipe
+approach in H1 dissolves ShareAlike exactly as it dissolves the MIT conflict.
+**This reverses the recommendation in the body of this file**, and it reverses it
+because the premise that produced it (BoE = OGL = commercial use permitted)
+turned out false.
+
+**Keep both.** They are for different jobs: JST if a return history is ever
+wanted, the Bank's data for the macro backbone.
+
+### Sources added 25 August 2026
+
+- Correspondence with the dataset's author — `boe-licence-query.md`
+- ESCoE Historical Data UK — https://www.escoe.ac.uk/research/historical-data/
+  (lists the Actuaries Investment Share Index 1923–1962, which *does* carry
+  prices **and** dividend yields, and Campbell–Grossman–Turner 1829–1929. A UK
+  equity total-return series back to the 1920s is constructible from three
+  stitched sources. **Not recommended:** three splice points and three citation
+  sets for a payoff §5 prices at 2.2pp.)
+- JST Macrohistory — https://www.macrohistory.net/database/ (CC BY-NC-SA 4.0;
+  equity total return, capital gain and dividend yield, 18 countries from 1870)

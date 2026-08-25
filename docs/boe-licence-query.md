@@ -12,6 +12,7 @@ This file is the correspondence record.
 | 15 Aug 2026 | Query sent to `DSD_EDITOR@bankofengland.co.uk`. |
 | 17 Aug 2026 | Holding reply from **BEEDS portal administration** — "forwarded your query to the relevant business area". |
 | 20 Aug 2026 | No substantive reply. Query identified as mis-routed; follow-up sent to the dataset's named contact. |
+| **25 Aug 2026** | **Substantive reply from Ryland Thomas, one of the dataset's two authors, copying Sally Srinivasan who administers the Bank's research datasets. Permission granted — see §6. Thread closed with a short acknowledgement the same evening.** |
 
 ---
 
@@ -187,3 +188,80 @@ If a second no-reply follows, the next escalation is the Head of Communications
 Division (§3 point 3) rather than another email to the same address. There is no
 deadline pressure: `load_history()` in `engine/returns.py` is the single function
 that would change, and it is documented as such.
+
+---
+
+## 6. The answer, 25 August 2026 — RESOLVED
+
+Reply from **Ryland Thomas**, Senior Research Advisor, Monetary Policy Strategy
+Division, copying **Sally Srinivasan** (research datasets). The four questions
+of §4 were answered by number.
+
+| Q | Asked | Answered |
+|---|---|---|
+| **1** | Publish a **derived** total-return series, with attribution? | **"Yes that is absolutely fine, if you are constructing/deriving your own return series from the data."** |
+| **2** | Any series excluded under third-party licence? | None named. *"It is usually fine to reproduce any series in the spreadsheet provided it is for non-commercial purposes and that you acknowledge the source of any raw data we have published using the references provided alongside citing the spreadsheet as well."* The Bank holds permissions from the original authors *"as far as possible"*, on a non-commercial full-citation basis. Doubts → ask. |
+| **3** | Is the Head of Communications Division the right route? | Not needed. Handled directly, with Sally Srinivasan copied in to advise on attribution. |
+| **4** | Attribution wording? | The **Thomas and Dimsdale** reference in the **citation section of the workbook's front page**, *plus* the original references for any underlying raw series used, *plus* a citation of the spreadsheet itself. |
+
+**Broader than the ask.** Question 1 sought permission for a *derived* series;
+answer 2 permits reproducing **the series themselves**.
+
+**Forward-looking:** *"I am preparing the next version of the Millennium dataset
+which I am hoping we can put under an explicit open licence, pending checking
+permissions and copyright on the new series we are adding."* The non-commercial
+constraint may therefore be temporary.
+
+**Commercial use is not foreclosed, only deferred:** *"if you do proceed to
+reproduce anything on a commercial basis please do get back in touch and we can
+discuss."*
+
+### 6a. Which row of §5 this is
+
+**"Non-commercial only."** §5 predicted the consequence: *"same position as JST
+— usable now, forecloses monetisation later."* Correct, and it costs this
+project nothing, because design rule 6 already bans affiliate links, referrals
+and sponsorship permanently.
+
+**The one live edge case** is hosting costs. Raised honestly in the 20 August
+email and not ruled out — Ryland asked to discuss it. **Ask Sally before acting,
+not after.** Deliberately left out of the acknowledgement, there being nothing
+concrete to decide.
+
+### 6b. What §3 got right in advance
+
+Every point in §3, worked out from the Bank's published terms **before any
+reply**, was confirmed: not Crown copyright, the OGL statement scoped to the
+Bank of England Database rather than to research datasets, and the default
+permission not extending to publishing on a website. **The datahub.io OGL label
+is wrong**, and §3's refusal to rely on it was correct.
+
+### 6c. Why the email worked, for next time
+
+Worth recording, because the reply was more generous than the question.
+
+- **Questions narrowest first.** Question 1 alone unblocked the build, and it
+  could be answered in nine words without consulting anyone. It was.
+- **Saying no was made cheap** — *"If the answer is no, that is a perfectly good
+  answer and I will carry on with the FCA rates."*
+- **One line let him redirect** (question 3) instead of a three-email chain.
+- **The site's character was shown, not claimed** — free, no advertising, no
+  affiliate links, no data collected, no product named, source public — and the
+  conclusion left to the reader. §4 notes the site was deliberately *not*
+  described as "academic or educational".
+- **A limitation was volunteered** (possible hosting costs) rather than hidden.
+
+### 6d. And then the data turned out not to fit
+
+**The permission is real and the equity plan died anyway.** The Millennium
+dataset's only equity series is a price index running 1962–2017, with no
+dividend yield, so total returns cannot be constructed and the worst British
+starting year (1900) sits outside the span entirely.
+
+**Full analysis in `DATA-SOURCING.md` §H.** The permission still matters — it
+covers long-run UK inflation, rates and wages, which is where the project now
+intends to use it.
+
+**The lesson, recorded because it cost ten days:** the field list was the
+cheaper question and it was asked second. **Check that the data can do the job
+before chasing the rights to it.**
