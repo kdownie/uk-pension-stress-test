@@ -205,6 +205,73 @@ async def main():
         chk("...and it equals pot less ONE lump, not two",
             js_open, 800_000.0 - R.pcls(400_000), 1.0)
 
+        print("\nF5. WHAT RETAINED TAX-FREE CASH DOES — JS vs PYTHON")
+        print("=" * 86)
+        # Added with the setting itself, 24 Aug 2026. Deterministic: zero
+        # volatility, one path, so the closing balance reads out the growth of
+        # the tax-free pot directly rather than through Monte Carlo noise.
+        # The first case is the one that matters most — the DEFAULT must be
+        # bit-for-bit the behaviour shipped before the setting existed.
+        def _py_held(held, rate, ret=0.0294):
+            hh = Household(
+                people=[Person(pot=400_000, age=60, state_pension=12_548,
+                               sp_age=67, take_pcls=True, pcls_spent=False)],
+                target_net_income=13_000, end_age=95,
+                pcls_held_as=held, pcls_cash_real=rate)
+            return simulate_household(hh, np.full((1, 35), ret))
+
+        def _js_held(held, rate, ret=0.0294):
+            return dict(pot=400_000, retire=60, end=95, target=13_000,
+                        sp=12_548, spAge=67, other=0, takePcls=True,
+                        pclsSpend=False, real=ret, vol=0.0, conv="geo",
+                        freeze=0, paths=1, couple=False, region="ruk",
+                        pot2=0, retire2=0, sp2=0, spAge2=200, other2=0,
+                        deathAge=0, survFrac=0.67,
+                        pclsHeld=held, pclsCashReal=rate)
+
+        _f5 = {}
+        for label, held, rate in [("cash, 0% real (the default)", "cash", 0.0),
+                                  ("cash, 1% real", "cash", 0.01),
+                                  ("invested", "invested", 0.0)]:
+            jsb = await pg.evaluate(
+                "cfg => { const r = simulate(cfg); return r.bal[r.years]; }",
+                _js_held(held, rate))
+            pyb = float(_py_held(held, rate).balances[0, -1])
+            chk(f"closing balance — {label}", jsb, pyb, 1.0)
+            _f5[label] = (jsb, pyb)
+
+        # AGREEMENT IS NOT ENOUGH. Delete the growth code from both engines and
+        # every comparison above still passes — they agree on the same wrong
+        # answer, which is exactly how the lifetime-tax bug survived (§15c) and
+        # how F3 stayed blind to the split bug (§20h). So assert that the
+        # setting CHANGES something, in each engine independently.
+        _lo = _f5["cash, 0% real (the default)"]
+        _mid = _f5["cash, 1% real"]
+        _hi = _f5["invested"]
+        for _eng, _i in (("JS", 0), ("Python", 1)):
+            ok = _hi[_i] > _mid[_i] > _lo[_i]
+            print(f"  {'PASS' if ok else 'FAIL'}  {_eng + ' — the setting actually changes the answer':<52}"
+                  f"{_hi[_i]:>13,.0f} > {_mid[_i]:>11,.0f} > {_lo[_i]:>11,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: pcls_held_as made no difference")
+
+        # The setting must be INERT when no lump is retained. If it is not,
+        # it has leaked into scenarios it has no business touching.
+        for label, spend in [("PCLS spent elsewhere", True)]:
+            cfg_a = _js_held("cash", 0.0);      cfg_a["pclsSpend"] = spend
+            cfg_b = _js_held("invested", 0.03); cfg_b["pclsSpend"] = spend
+            inert_a = await pg.evaluate("cfg => { const r=simulate(cfg); return r.bal[r.years]; }", cfg_a)
+            inert_b = await pg.evaluate("cfg => { const r=simulate(cfg); return r.bal[r.years]; }", cfg_b)
+            chk(f"setting is inert — {label}", inert_b, inert_a, 1.0)
+
+        # And the control must actually exist on the page, wired to the engine.
+        for sel in ("#pclsHeld", "#pclsCash"):
+            n = await pg.evaluate(f"document.querySelectorAll('{sel}').length")
+            print(f"  {'PASS' if n == 1 else 'FAIL'}  control {sel:<14} "
+                  f"{'present' if n == 1 else 'MISSING'}")
+            if n != 1:
+                fails.append(f"control {sel} missing")
+
         print("\nG. PAGE HEALTH")
         print("=" * 86)
         for sel, label in [("#s_succ", "success rate"), ("#s_safe", "safe income"),

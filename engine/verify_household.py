@@ -339,6 +339,75 @@ chk("no cheaper split exists (brute force, taper zone + freeze)",
     max(0.0, _H_EXCESS), 0.0, tol=1.0)
 
 
+print("\nI. WHAT RETAINED TAX-FREE CASH DOES WHILE IT WAITS  (24 Aug 2026)")
+print("=" * 92)
+# Until 24 Aug 2026 the retained lump sat at 0% while the pots compounded, and
+# nothing said so. It is now Household.pcls_held_as, and the point of these
+# checks is that the DEFAULT must not have moved anything: "cash" at 0% real is
+# the old behaviour, exactly, not approximately.
+# Zero volatility, one path -> fully deterministic. The income target is set
+# low enough that nothing depletes: a test whose balances are all zero cannot
+# tell 1% from 0%, which is how the first draft of this section passed one
+# check it should have failed.
+_I_RET = np.zeros((1, 35))
+
+def _hh_cash(held, rate):
+    return Household(
+        people=[Person(pot=400_000, age=60, state_pension=R.STATE_PENSION_ANNUAL,
+                       sp_age=67, take_pcls=True, pcls_spent=False)],
+        target_net_income=13_000, end_age=95,
+        pcls_held_as=held, pcls_cash_real=rate)
+
+# 1. the default is bit-for-bit the old behaviour: with a flat zero return and
+#    0% real on the cash, nothing anywhere may grow.
+_base = simulate_household(_hh_cash("cash", 0.0), _I_RET)
+chk("default (cash, 0% real) — opening balance", float(_base.balances[0, 0]),
+    400_000.0)
+
+# 2. a positive cash rate must leave MORE, and an invested pot at zero return
+#    must leave the SAME as cash at 0% — the two knobs must not interact.
+_c1  = simulate_household(_hh_cash("cash", 0.01), _I_RET)
+_inv = simulate_household(_hh_cash("invested", 0.0), _I_RET)
+chk("invested at a 0% return == cash at 0% real",
+    float(_inv.balances[0, -1]), float(_base.balances[0, -1]))
+if float(_c1.balances[0, -1]) <= float(_base.balances[0, -1]):
+    fails.append("a positive cash rate did not increase the closing balance")
+    print("  FAIL  1% real on cash leaves more than 0%")
+else:
+    print(f"  PASS  1% real on cash leaves more than 0%              "
+          f"{_c1.balances[0,-1]:>13,.2f} vs {_base.balances[0,-1]:>13,.2f}")
+
+# 3. under a real return, "invested" must beat "cash at 0%" — and the gap is
+#    the whole reason this setting exists.
+_R2 = np.full((1, 35), 0.0294)
+_bc = simulate_household(_hh_cash("cash", 0.0), _R2)
+_bi = simulate_household(_hh_cash("invested", 0.0), _R2)
+if float(_bi.balances[0, -1]) <= float(_bc.balances[0, -1]):
+    fails.append("invested tax-free cash did not beat cash at 0% real")
+    print("  FAIL  invested beats cash at 0% real under a 2.94% return")
+else:
+    print(f"  PASS  invested beats cash at 0% real (2.94% return)   "
+          f"{_bi.balances[0,-1]:>13,.2f} vs {_bc.balances[0,-1]:>13,.2f}")
+
+# 4. and it must make NO difference at all when there is no retained lump:
+#    spend it, or never take it, and the setting is inert. This is the guard
+#    against the setting leaking into scenarios it has no business touching.
+for _lab, _kw in (("PCLS spent", dict(take_pcls=True, pcls_spent=True)),
+                  ("no PCLS taken", dict(take_pcls=False, pcls_spent=False))):
+    _a = simulate_household(Household(
+            people=[Person(pot=400_000, age=60,
+                           state_pension=R.STATE_PENSION_ANNUAL, sp_age=67, **_kw)],
+            target_net_income=13_000, end_age=95,
+            pcls_held_as="cash", pcls_cash_real=0.0), _R2)
+    _b = simulate_household(Household(
+            people=[Person(pot=400_000, age=60,
+                           state_pension=R.STATE_PENSION_ANNUAL, sp_age=67, **_kw)],
+            target_net_income=13_000, end_age=95,
+            pcls_held_as="invested", pcls_cash_real=0.03), _R2)
+    chk(f"setting is inert when there is no retained lump ({_lab})",
+        float(_b.balances[0, -1]), float(_a.balances[0, -1]))
+
+
 print("\n" + "=" * 92)
 if fails:
     print(f"FAILED {len(fails)}: " + "; ".join(map(str, fails)))

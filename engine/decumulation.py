@@ -34,6 +34,18 @@ class Plan:
     state_pension_annual: float = R.STATE_PENSION_ANNUAL
     take_pcls: bool = True
     pcls_spent_immediately: bool = False     # if False, PCLS is held as cash
+    # What retained tax-free cash DOES while it waits. Until 24 Aug 2026 the
+    # answer was "nothing", silently: the lump sat at 0% nominal while the
+    # pension compounded. That is an assumption, not a fact, and it was not
+    # disclosed anywhere. It is now a choice.
+    #   "cash"     — held as savings, earning pcls_cash_real in REAL terms.
+    #                0.0 is the textbook cash assumption (keeps pace with
+    #                inflation, no more) and reproduces the pre-2026-08-24
+    #                behaviour exactly.
+    #   "invested" — rides the same return path as the pension, which is what
+    #                someone who moves it into an ISA and invests it gets.
+    pcls_held_as: str = "cash"               # "cash" | "invested"
+    pcls_cash_real: float = 0.0              # real return on retained cash
     other_taxable_income: float = 0.0        # e.g. a DB pension, real terms
     band_freeze_years: int = 0               # years bands stay nominally frozen
     region: str = "ruk"                      # "ruk" or "scotland"
@@ -168,6 +180,11 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
 
         pot *= (1.0 + r[:, y])
         pot = np.maximum(pot, 0.0)
+        # Retained tax-free cash grows too — see Plan.pcls_held_as.
+        if plan.pcls_held_as == "invested":
+            cash = cash * (1.0 + r[:, y])
+        elif plan.pcls_cash_real:
+            cash = cash * (1.0 + plan.pcls_cash_real)
         balances[:, y + 1] = pot + cash
 
     return Result(plan=plan, engine_name=engine_name, balances=balances,

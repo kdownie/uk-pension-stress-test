@@ -231,6 +231,11 @@ class Household:
     region: str = "ruk"
     band_freeze_years: int = 0
     assumed_inflation: float = 0.03
+    # See DecumulationParams/Plan.pcls_held_as — the two engines must agree.
+    # "cash" with pcls_cash_real = 0.0 reproduces the behaviour shipped before
+    # 24 August 2026, where retained tax-free cash silently earned nothing.
+    pcls_held_as: str = "cash"          # "cash" | "invested"
+    pcls_cash_real: float = 0.0
 
     # survivor_fraction: a one-person household does not cost half a
     # two-person one — rent, heating, council tax and car do not halve.
@@ -383,6 +388,11 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
 
         pots *= (1.0 + r[:, y])[:, None]
         np.maximum(pots, 0.0, out=pots)
+        # Retained tax-free cash grows too — see Household.pcls_held_as.
+        if hh.pcls_held_as == "invested":
+            cash = cash * (1.0 + r[:, y])
+        elif hh.pcls_cash_real:
+            cash = cash * (1.0 + hh.pcls_cash_real)
         balances[:, y + 1] = pots.sum(axis=1) + cash
 
     return HouseholdResult(
