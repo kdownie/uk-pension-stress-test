@@ -325,6 +325,24 @@ footer a{color:var(--s450)}
         it is spent, and where it sits changes the answer. Cash earns the rate
         set in the assumptions below; invested means it rides the same returns
         as the pension.</p>
+      <hr>
+      <label><span class="lbl">ISA and other tax-free savings, now</span>
+        <input type="number" id="isa" value="0" step="1000" min="0"></label>
+      <p class="hint">Money you already hold outside a pension that is not taxed
+        when you draw it. Entering it here rather than adding it to the pension
+        changes the answer: a pension is taxed on the way out and an ISA is not.
+        The household total &mdash; ISAs are individual, but the model does not
+        yet split them between partners.</p>
+
+      <label><span class="lbl">…held as</span>
+        <select id="isaHeld">
+          <option value="invested" selected>invested, alongside the pension</option>
+          <option value="cash">cash or savings</option>
+        </select></label>
+      <p class="hint">Separate from the setting above, because a lump sum kept in
+        a bank account beside an invested ISA is an ordinary thing and one
+        control cannot describe it. Cash earns the ISA rate in the assumptions
+        below.</p>
     </div>
 
   <!-- ============ RESULTS ============ -->
@@ -393,6 +411,11 @@ footer a{color:var(--s450)}
       <p class="hint">Real, after inflation. 0% is the textbook assumption for
         cash — savings that keep pace with inflation and no more. Only used
         when tax-free cash is held as cash.</p>
+
+      <label><span class="lbl">Return on an ISA held as cash <span class="val" id="v_isareal">0%</span></span>
+        <input type="range" id="isaReal" min="-2" max="5" step="0.25" value="0"></label>
+      <p class="hint">Real, after inflation. Only used when the ISA above is held
+        as cash rather than invested.</p>
 
       <label><span class="lbl">Volatility <span class="val" id="v_vol">15%</span></span>
         <input type="range" id="vol" min="0" max="30" step="1" value="15"></label>
@@ -671,6 +694,11 @@ function simulate(P){
   // itself always passes both explicitly, from controls the user can see.
   const freezeInfl = (P.freezeInfl ?? 0.03);
   const spGrowth   = (P.spGrowth   ?? 0.0);
+  // STAGE D. Note isaHeld defaults to "invested" while pclsHeld defaults to
+  // "cash" — deliberate, and measured: see Plan.isa in decumulation.py.
+  const isaStart   = (P.isa        ?? 0.0);
+  const isaHeld    = (P.isaHeld    ?? "invested");
+  const isaReal    = (P.isaReal    ?? 0.0);
   seedState = 987654321;
   const N = P.paths;
   const z = normals(N*years);
@@ -716,8 +744,8 @@ function simulate(P){
   let succ=0;
 
   for(let p=0;p<N;p++){
-    let potA=startA, potB=startB, cash=startCash;
-    bal[p*(years+1)] = potA+potB+cash;
+    let potA=startA, potB=startB, cash=startCash, isa=isaStart;
+    bal[p*(years+1)] = potA+potB+cash+isa;
     let failed=false, pooled=false;
     for(let y=0;y<years;y++){
       const info=yearInfo[y];
@@ -726,7 +754,15 @@ function simulate(P){
       if(couple && !info.aliveB && !pooled){ potA+=potB; potB=0; pooled=true; }
       const fromCash=Math.min(cash, info.needNet);
       cash-=fromCash;
-      const frac = info.needNet>0 ? (info.needNet-fromCash)/info.needNet : 0;
+      /* The ISA is drawn AFTER retained tax-free cash and BEFORE the pensions.
+         Second place keeps isa = 0 byte-identical to the shipped engine.
+         This order is HARD-CODED and, now that the ISA grows, it is knowingly
+         not the best one — stated in the assumptions block. Mirrors the Python
+         engines, which must agree. */
+      const fromIsa=Math.min(isa, info.needNet-fromCash);
+      isa-=fromIsa;
+      const frac = info.needNet>0
+        ? (info.needNet-fromCash-fromIsa)/info.needNet : 0;
       let want=info.grossA*frac, takenA=Math.min(potA,want);
       potA-=takenA; let short=want-takenA;
       if(info.aliveB){
@@ -748,7 +784,10 @@ function simulate(P){
          pensions. Mirrors pcls_held_as in the Python engines. */
       if(P.pclsHeld==="invested") cash*=g;
       else if(P.pclsCashReal) cash*=(1+P.pclsCashReal);
-      bal[p*(years+1)+y+1]=potA+potB+cash;
+      // The ISA grows by its OWN rule, never by pclsHeld.
+      if(isaHeld==="invested") isa*=g;
+      else if(isaReal) isa*=(1+isaReal);
+      bal[p*(years+1)+y+1]=potA+potB+cash+isa;
     }
     if(!failed) succ++;
   }
@@ -879,6 +918,8 @@ function readParams(){
     takePcls:$("pcls").checked, pclsSpend:$("pclsSpend").checked,
     pclsHeld:$("pclsHeld").value, pclsCashReal:+$("pclsCash").value/100,
     real, vol:+$("vol").value/100, conv:$("conv").value,
+    isa:+$("isa").value, isaHeld:$("isaHeld").value,
+    isaReal:+$("isaReal").value/100,
     freeze:+$("freeze").value, freezeInfl:+$("freezeInfl").value/100,
     spGrowth:+$("spGrowth").value/100,
     paths:+$("paths").value, scen
@@ -1137,6 +1178,20 @@ function assumptionsBlock(P,r){
        triple lock uprates the State Pension by the higher of inflation, average
        earnings growth or 2.5%, so 0% is the assumption that it ends now`}.
   <a href="${RULES.src.sp}">Source</a>.</p>
+  ${P.isa ? `<p><b>ISA and other tax-free savings.</b> ${gbp(P.isa)} at the start,
+  ${P.isaHeld==="invested"
+    ? "invested alongside the pension"
+    : `held as cash earning ${(P.isaReal*100).toFixed(2).replace(/\.?0+$/,"")}% a year after inflation`},
+  drawn without tax. Held as a household total; ISAs are individual, and the
+  £20,000-a-year subscription limit and the rules on death are <b>not</b>
+  modelled.</p>` : ""}
+  <p><b>Withdrawal order.</b> Tax-free money is spent first — retained tax-free
+  cash, then any ISA — and the pension last. <b>That order is fixed, and it is
+  not always the best one.</b> It is unambiguously right while tax-free money
+  earns nothing, which is what this model assumed until 24 August 2026. Now that
+  the tax-free pots can grow, spending them first can mean spending the
+  best-held asset first: on the assumptions here that is worth around two and a
+  half percentage points. The model does not offer alternative orders yet.</p>
   <p><b>Method.</b> ${r.N.toLocaleString("en-GB")} simulations, ${r.years} years each,
   all in today's money. Income is drawn before that year's growth is applied —
   the cautious convention. Tax-free cash is spent before taxable withdrawals. For a couple, both pots experience the same investment returns each year — one household, one market.</p>`;
@@ -1153,6 +1208,7 @@ function run(){
   $("v_inc").textContent=gbp(P.target);
   $("v_vol").textContent=(P.vol*100).toFixed(0)+"%"; $("v_pclscash").textContent=(P.pclsCashReal*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_freeze").textContent=P.freeze+(P.freeze===1?" year":" years");
+  $("v_isareal").textContent=(P.isaReal*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_freezeInfl").textContent=(P.freezeInfl*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_spGrowth").textContent=(P.spGrowth*100).toFixed(1).replace(/\.0$/,"")+"%";
   $("v_paths").textContent=P.paths.toLocaleString("en-GB");
