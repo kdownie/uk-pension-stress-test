@@ -457,7 +457,8 @@ wrong.</p>
   <li><strong>Inherited pots are treated as fully taxable drawdown.</strong> The
     real rules differ by age at death — broadly tax-free if the member died
     before 75, taxed at the beneficiary's marginal rate after. Ours is the
-    cautious direction. It is a disclosed simplification, not an error.</li>
+    cautious direction. It is a disclosed simplification, not an error — §9
+    has the rule at source.</li>
   <li><strong>Only a partner's death is modelled, not your own.</strong></li>
   <li><strong>One tax charge is counted but not funded.</strong> When one
     partner's pot empties and the other covers the shortfall, the tax on that
@@ -469,15 +470,71 @@ wrong.</p>
     the cautious direction, and stated on the page rather than buried.</li>
   <li>No National Insurance (correct for pension income, wrong the moment earned
     income is added), no money purchase annual allowance, no defined benefit
-    pensions or annuities, no inheritance tax, no investment charges, no care
-    costs, and no ISAs or other wrappers yet.</li>
+    pensions or annuities, <strong>no inheritance tax</strong> (§9 — the rules
+    change on a date inside every projection here), no investment charges, no
+    care costs, and no ISAs or other wrappers yet.</li>
   <li>Mortality is a date you pick, not a probability.</li>
   <li>The State Pension defaults to the full new State Pension, which assumes a
     complete National Insurance record. Many people get less. An actual forecast
     is at <a href="https://www.gov.uk/check-state-pension">gov.uk/check-state-pension</a>.</li>
 </ul>
 
-<h2><span class="num">9</span>How to check any of this</h2>
+<h2 id="s9"><span class="num">9</span>The pension and inheritance tax, from April 2027</h2>
+
+<p>For deaths on or after <strong>6 April 2027</strong>, most unused pension funds
+and death benefits count as part of the estate for inheritance tax. That is
+sections 66 to 71 of the Finance Act 2026 &mdash; enacted, not proposed. The date
+falls inside the first year of every projection this page runs.</p>
+
+<p><strong>None of it is modelled here.</strong> Three facts about it that the
+tool does not use:</p>
+
+<h3>A surviving spouse or civil partner is still exempt</h3>
+
+<p>Pots passing to one are outside the estate on 6 April 2028 exactly as they
+were the day before, so the charge arrives at the second death rather than the
+first. The only death this tool models is a partner's death — which is the
+exempt one. Death in service benefits from a registered scheme, and dependants'
+scheme pensions from defined benefit or collective money purchase arrangements,
+are also outside the measure.</p>
+
+<h3>The income tax rules are unchanged, and still turn on age 75</h3>
+
+<p>A pot inherited from someone who died before 75 is broadly tax-free to the
+beneficiary, subject to the lump sum and death benefit allowance. From 75 onward
+it is taxed at the beneficiary's marginal rate. This tool treats every inherited
+pot as fully taxable, which is right after 75 and too cautious before it — see
+§8.</p>
+
+<h3>Where both charges land, they do not simply add up</h3>
+
+<p>Income tax is charged on the amount left <em>after</em> inheritance tax, not on
+the whole pot. On a death at 75 or over, in an estate above the nil-rate band,
+what reaches the beneficiary is:</p>
+
+<table>
+  <caption>What reaches the beneficiary from an inherited pension pot, in an
+    estate above the nil-rate band, from 6 April 2027. Inheritance tax at 40%,
+    then income tax on the remainder.</caption>
+  <thead><tr><th>Beneficiary's income tax rate</th><th class="n">They keep</th></tr></thead>
+  <tbody>
+    <tr><td>Member died before 75</td><td class="n">60%</td></tr>
+    <tr><td>Basic rate (20%)</td><td class="n">48%</td></tr>
+    <tr><td>Higher rate (40%)</td><td class="n">36%</td></tr>
+    <tr><td>Additional rate (45%)</td><td class="n">33%</td></tr>
+  </tbody>
+</table>
+
+<p class="src">40% inheritance tax, then income tax on the remainder. The widely
+quoted 64% combined rate is the higher-rate row, and it applies only where the
+member died at 75 or over.</p>
+
+<p>Whether any of it is due at all depends on the whole estate — the nil-rate
+band is £325,000, the residence nil-rate band £175,000, and both are frozen
+until April 2030. This page knows nothing about the rest of your estate, so it
+cannot tell you which of those figures applies to you.</p>
+
+<h2><span class="num">10</span>How to check any of this</h2>
 
 <p>Every figure on this page comes out of code that anyone can run.</p>
 
@@ -523,7 +580,14 @@ in the repository.</p>
   Projection rates: FCA Handbook COBS 13 Annex 2 —
   <a href="https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html">handbook.fca.org.uk</a>.<br>
   Tax and State Pension figures: <a href="https://www.gov.uk/income-tax-rates">gov.uk/income-tax-rates</a>,
-  <a href="https://www.gov.uk/new-state-pension/what-youll-get">gov.uk/new-state-pension</a>.
+  <a href="https://www.gov.uk/new-state-pension/what-youll-get">gov.uk/new-state-pension</a>.<br>
+  Pensions and inheritance tax from April 2027:
+  <a href="https://www.legislation.gov.uk/ukpga/2026/11/contents">Finance Act 2026</a> (Part 2, sections 66–71),
+  HMRC policy paper
+  <a href="https://www.gov.uk/government/publications/reforming-inheritance-tax-unused-pension-funds-and-death-benefits/inheritance-tax-on-unused-pension-funds-and-death-benefits">Inheritance Tax on unused pension funds and death benefits</a>,
+  HMRC <a href="https://www.gov.uk/government/publications/inheritance-tax-on-pensions-technical-note/technical-note-inheritance-tax-on-pensions">technical note</a>,
+  and <a href="https://www.gov.uk/tax-on-pension-death-benefits">gov.uk/tax-on-pension-death-benefits</a>
+  for the age-75 rule.
 </p>
 
 </article>
