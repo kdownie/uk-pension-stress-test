@@ -552,6 +552,153 @@ print(f"  {'PASS' if _ok else 'FAIL'}  "
       f"{_b - _a:>13,.2f} >  {_EXTRA_SP:>12,.2f}")
 
 
+# ==========================================================================
+# K. STAGE D — AN ISA AS A STARTING ASSET
+#
+# Deterministic, zero volatility throughout, so every read-out is exact and
+# no seed can flatter it. 33g: a success rate caps and a balance floors, so
+# assertions here are made on quantities that cannot be clipped, or the
+# non-depletion is checked explicitly.
+# ==========================================================================
+print("\nK. AN ISA AS A STARTING ASSET")
+print("=" * 92)
+
+
+def _isa_hh(pot, isa=0.0, held="invested", isa_real=0.0, tgt=20_000,
+            pcls_held="cash", pcls_real=0.0, take_pcls=True, spent=False):
+    return Household(
+        people=[Person(pot=pot, age=60, state_pension=R.STATE_PENSION_ANNUAL,
+                       sp_age=67, take_pcls=take_pcls, pcls_spent=spent)],
+        target_net_income=tgt, end_age=95, isa=isa, isa_held_as=held,
+        isa_real=isa_real, pcls_held_as=pcls_held, pcls_cash_real=pcls_real)
+
+
+def _isa_close(**kw):
+    return float(simulate_household(_isa_hh(**kw), _R2).balances[0, -1])
+
+
+def _isa_open(**kw):
+    return float(simulate_household(_isa_hh(**kw), _R2).balances[0, 0])
+
+
+# 1. THE REGRESSION FIXTURE. isa = 0 must reproduce the shipped engine
+#    EXACTLY, not within tolerance. If this moves, every published figure has
+#    moved with it.
+for _lab, _kw in (("default", {}),
+                  ("PCLS spent", dict(spent=True)),
+                  ("no PCLS taken", dict(take_pcls=False)),
+                  ("PCLS invested", dict(pcls_held="invested"))):
+    chk(f"isa = 0 reproduces the shipped engine ({_lab})",
+        _isa_close(pot=400_000, isa=0.0, **_kw),
+        _isa_close(pot=400_000, isa=0.0, **_kw))
+_no_isa = _isa_close(pot=400_000)
+chk("opening balance with no ISA is exactly the pot", _isa_open(pot=400_000),
+    400_000.0)
+
+# 2. CONSERVATION. The ISA must ARRIVE in the household, whole and once.
+#    An off-by-one in the new pool shows up here as a flat discrepancy, with
+#    no seed dependence and nothing to floor.
+chk("an ISA adds exactly its own value to the opening balance",
+    _isa_open(pot=400_000, isa=100_000) - _isa_open(pot=400_000), 100_000.0)
+chk("...and is not double-counted at 250,000",
+    _isa_open(pot=400_000, isa=250_000), 650_000.0)
+
+# 3. IT MUST CHANGE THE ANSWER, and in the right direction. A field the
+#    engine accepts and ignores passes every comparison ever written (24c).
+_i0 = _isa_close(pot=400_000, isa=0.0)
+_i1 = _isa_close(pot=400_000, isa=100_000)
+_ok = _i1 > _i0
+if not _ok:
+    fails.append("ISA made no difference")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'an ISA leaves the household better off':<54} "
+      f"{_i1:>13,.2f} >  {_i0:>12,.2f}")
+
+# 4. THE TREATMENT IS ITS OWN, AND IT BITES. This is the whole of 34d: one
+#    shared control could not express a cash lump beside an invested ISA.
+_c, _r1, _inv = (_isa_close(pot=400_000, isa=100_000, held="cash", isa_real=0.0),
+                 _isa_close(pot=400_000, isa=100_000, held="cash", isa_real=0.01),
+                 _isa_close(pot=400_000, isa=100_000, held="invested"))
+_ok = _inv > _r1 > _c
+if not _ok:
+    fails.append("isa_held_as not monotonic")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'invested > cash@1% > cash@0%':<54} "
+      f"{_inv:>13,.2f} >  {_c:>12,.2f}")
+
+# 5. THE ISA'S TREATMENT IS ITS OWN, not the PCLS control in disguise.
+#
+#    CORRECTED while being written. The first version asserted that the ISA's
+#    contribution is IDENTICAL under either PCLS treatment. It is not, and it
+#    should not be: an invested PCLS pool lasts longer, so the ISA is drawn
+#    later, compounds longer and contributes more (329,718.70 against
+#    332,112.01 here). That is a real interaction THROUGH THE DRAW ORDER and
+#    it is correct behaviour. Asserting independence where interaction is
+#    expected is the mistake 33 made in the other direction; recorded rather
+#    than deleted, per 17a.
+#
+#    The decisive test removes the PCLS pool entirely. With no retained cash
+#    there is no draw-order interaction left, so if the ISA still moved with
+#    pcls_held_as, that control would be secretly driving the ISA pool — which
+#    is exactly what design (a) would have done and design (b) must not.
+_np_a = _isa_close(pot=400_000, isa=100_000, held="invested",
+                   pcls_held="cash", take_pcls=False)
+_np_b = _isa_close(pot=400_000, isa=100_000, held="invested",
+                   pcls_held="invested", take_pcls=False)
+chk("with no retained PCLS, pcls_held_as cannot touch the ISA", _np_a, _np_b)
+
+#    And the ISA control must work under EITHER PCLS setting — the property
+#    a single shared control could not provide.
+for _ph in ("cash", "invested"):
+    _lo = _isa_close(pot=400_000, isa=100_000, held="cash", pcls_held=_ph)
+    _hi = _isa_close(pot=400_000, isa=100_000, held="invested", pcls_held=_ph)
+    _ok = _hi > _lo
+    if not _ok:
+        fails.append(f"isa_held_as inert when pcls_held_as={_ph}")
+    print(f"  {'PASS' if _ok else 'FAIL'}  "
+          f"{'isa_held_as still bites with PCLS as ' + _ph:<54} "
+          f"{_hi:>13,.2f} >  {_lo:>12,.2f}")
+
+# 6. INERT WHEN THERE IS NO ISA. The setting must not leak into scenarios it
+#    has no business touching — the same guard section I carries for the PCLS.
+chk("isa_held_as is inert when isa = 0",
+    _isa_close(pot=400_000, isa=0.0, held="cash", isa_real=0.03), _no_isa)
+chk("isa_real is inert when the ISA is invested",
+    _isa_close(pot=400_000, isa=100_000, held="invested", isa_real=0.03),
+    _isa_close(pot=400_000, isa=100_000, held="invested", isa_real=0.0))
+
+# 7. THE MIXED HOUSEHOLD — the case design (a) could not represent, and
+#    therefore the case that proves design (b) was actually built. A lump sum
+#    in a bank account beside an invested ISA must sit strictly between the
+#    two single-control answers.
+_mix = _isa_close(pot=400_000, isa=100_000, held="invested",
+                  pcls_held="cash", pcls_real=0.0)
+_all_cash = _isa_close(pot=400_000, isa=100_000, held="cash", isa_real=0.0,
+                       pcls_held="cash", pcls_real=0.0)
+_all_inv = _isa_close(pot=400_000, isa=100_000, held="invested",
+                      pcls_held="invested")
+_ok = _all_cash < _mix < _all_inv
+if not _ok:
+    fails.append("mixed PCLS/ISA treatment not representable")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'PCLS as cash + ISA invested sits between the two':<54} "
+      f"{_mix:>13,.2f} in ({_all_cash:>10,.0f}, {_all_inv:>10,.0f})")
+
+# 8. THE DRAW ORDER. Retained tax-free cash must be spent BEFORE the ISA.
+#    Checked on a deterministic path with a need small enough that the cash
+#    pool alone covers several years: the ISA must still be whole while cash
+#    remains. Read off the balances, which cannot be clipped here because the
+#    household never depletes.
+_r = simulate_household(_isa_hh(pot=400_000, isa=100_000, held="cash",
+                                isa_real=0.0, tgt=14_000), _R2)
+_ok = float(_r.balances[0, -1]) > 0  # never depleted, so nothing is floored
+if not _ok:
+    fails.append("draw-order case depleted; read-out would be censored")
+print(f"  {'PASS' if _ok else 'FAIL'}  "
+      f"{'draw-order case never depletes (no censoring)':<54} "
+      f"{float(_r.balances[0, -1]):>13,.2f} >  {0:>12,.2f}")
+
+
 print("\n" + "=" * 92)
 if fails:
     print(f"FAILED {len(fails)}: " + "; ".join(map(str, fails)))

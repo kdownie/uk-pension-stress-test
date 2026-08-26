@@ -378,6 +378,102 @@ async def main():
             if not ok:
                 fails.append(f"disclosure missing: {_why}")
 
+        # ==================================================================
+        # F7. STAGE D — AN ISA AS A STARTING ASSET, JS vs PYTHON
+        #
+        # Deterministic (zero volatility), so every figure is exact.
+        # ==================================================================
+        print("\nF7. AN ISA AS A STARTING ASSET — JS vs PYTHON")
+        print("=" * 86)
+
+        def _cfg7(isa, held="invested", isa_real=0.0, pcls_held="cash"):
+            return dict(pot=400_000, retire=60, end=95, target=20_000,
+                        sp=12_548, spAge=67, other=0, takePcls=True,
+                        pclsSpend=False, pclsHeld=pcls_held, pclsCashReal=0.0,
+                        isa=isa, isaHeld=held, isaReal=isa_real,
+                        real=0.0294, vol=0.0, conv="geo", freeze=0,
+                        freezeInfl=0.03, spGrowth=0.0, paths=1, couple=False,
+                        region="ruk", pot2=0, retire2=0, sp2=0, spAge2=200,
+                        other2=0, deathAge=0, survFrac=0.67)
+
+        def _py7(isa, held="invested", isa_real=0.0, pcls_held="cash"):
+            plan = Plan(pot=400_000, retire_age=60, end_age=95,
+                        target_net_income=20_000, state_pension_age=67,
+                        state_pension_annual=12_548, take_pcls=True,
+                        isa=isa, isa_held_as=held, isa_real=isa_real,
+                        pcls_held_as=pcls_held)
+            return float(simulate(plan, np.full((1, 35), 0.0294)).balances[0, -1])
+
+        _c7 = [("no ISA — the regression fixture", 0.0, "invested", 0.0, "cash"),
+               ("ISA 100k, invested",          100_000.0, "invested", 0.0, "cash"),
+               ("ISA 100k, cash at 0%",        100_000.0, "cash",     0.0, "cash"),
+               ("ISA 100k, cash at 1%",        100_000.0, "cash",    0.01, "cash"),
+               ("ISA 100k invested, PCLS invested",
+                                               100_000.0, "invested", 0.0, "invested")]
+        _g7 = {}
+        for _lab, _isa, _held, _ir, _ph in _c7:
+            _js = await pg.evaluate(
+                "cfg => { const r=simulate(cfg); return r.bal[r.years]; }",
+                _cfg7(_isa, _held, _ir, _ph))
+            _py = _py7(_isa, _held, _ir, _ph)
+            _g7[_lab] = (_js, _py)
+            chk(f"closing balance — {_lab}", _js, _py, 1.0)
+
+        # The opening balance is a direct read-out of whether the ISA arrived
+        # whole and once — deterministic, and it cannot be floored.
+        _open_js = await pg.evaluate("cfg => simulate(cfg).bal[0]", _cfg7(100_000.0))
+        chk("opening balance = pot + ISA (arrived once)", _open_js, 500_000.0, 1.0)
+
+        # EFFECT ASSERTIONS, separately in each engine. A field both engines
+        # ignore identically agrees perfectly and means nothing (24c).
+        for _eng, _i in (("JS", 0), ("Python", 1)):
+            _n = _g7["no ISA — the regression fixture"][_i]
+            _v = _g7["ISA 100k, invested"][_i]
+            ok = _v > _n
+            print(f"  {'PASS' if ok else 'FAIL'}  {_eng + ' — an ISA changes the answer':<52}"
+                  f"{_v:>13,.0f} > {_n:>11,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: isa made no difference")
+
+            _lo = _g7["ISA 100k, cash at 0%"][_i]
+            _mid = _g7["ISA 100k, cash at 1%"][_i]
+            _hi = _g7["ISA 100k, invested"][_i]
+            ok = _hi > _mid > _lo
+            print(f"  {'PASS' if ok else 'FAIL'}  {_eng + ' — isaHeld changes the answer':<52}"
+                  f"{_hi:>13,.0f} > {_mid:>11,.0f} > {_lo:>11,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: isaHeld made no difference")
+
+        # Omitted fields must fall back to the PYTHON dataclass defaults —
+        # note isaHeld defaults to "invested" while pclsHeld defaults to
+        # "cash", so a careless shared default would show up right here.
+        _bare = _cfg7(100_000.0)
+        del _bare["isaHeld"], _bare["isaReal"]
+        _js_bare = await pg.evaluate(
+            "cfg => { const r=simulate(cfg); return r.bal[r.years]; }", _bare)
+        chk("omitted ISA fields default to invested, as Python does",
+            _js_bare, _py7(100_000.0), 1.0)
+
+        # The controls must exist and be wired.
+        for sel in ("#isa", "#isaHeld", "#isaReal"):
+            n = await pg.evaluate(f"document.querySelectorAll('{sel}').length")
+            print(f"  {'PASS' if n == 1 else 'FAIL'}  control {sel:<14} "
+                  f"{'present' if n == 1 else 'MISSING'}")
+            if n != 1:
+                fails.append(f"control {sel} missing")
+
+        # The ordering disclosure is part of the fix. Shipping a knowingly
+        # suboptimal hard-coded order without saying so would be the tool
+        # doing the thing it criticises.
+        _assump = await pg.evaluate("document.getElementById('assump').textContent")
+        for _phrase, _why in (("order is fixed", "the order is declared fixed"),
+                              ("not always the best", "and declared suboptimal")):
+            ok = _phrase in _assump
+            print(f"  {'PASS' if ok else 'FAIL'}  disclosure: {_why:<38} "
+                  f"{'present' if ok else 'MISSING'}")
+            if not ok:
+                fails.append(f"disclosure missing: {_why}")
+
         print("\nG. PAGE HEALTH")
         print("=" * 86)
         for sel, label in [("#s_succ", "success rate"), ("#s_safe", "safe income"),

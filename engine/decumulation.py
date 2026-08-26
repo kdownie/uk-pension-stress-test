@@ -58,6 +58,26 @@ class Plan:
     # the higher of CPI, average earnings growth, or 2.5%. Worth ~5.7pp at
     # 0.75%/yr on the default scenario. Mirrors spGrowth in public/index.html.
     sp_real_growth: float = 0.0
+    # STAGE D — an ISA as a STARTING asset (34e). A second tax-free pool, held
+    # from the outset rather than created by taking tax-free cash.
+    #
+    # It carries its OWN treatment rather than inheriting pcls_held_as, and that
+    # is a measured decision, not a preference: a retained lump sum in a bank
+    # account beside an invested ISA is an ordinary household, and one shared
+    # control cannot express it. Forcing it wrong costs 2-23pp (34d).
+    #
+    # DEFAULT IS "invested", unlike pcls_held_as which defaults to "cash".
+    # Nobody holds an ISA at 0% real by choice, and inheriting that default
+    # would make a user entering their true position watch the answer FALL.
+    #
+    # HOUSEHOLD-LEVEL, NOT PER-PERSON, deliberately (34g). Ownership buys the
+    # GBP20,000 subscription cap and the death rules (APS, the three-year
+    # continuing-account window) and nothing else, and both are stage G. The JS
+    # is household-level too; keeping them the same avoids adding a second
+    # degree of freedom one engine cannot express.
+    isa: float = 0.0                         # tax-free starting balance
+    isa_held_as: str = "invested"            # "cash" | "invested"
+    isa_real: float = 0.0                    # real return when held as cash
 
     @property
     def years(self) -> int:
@@ -133,6 +153,7 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
 
     pot = np.full(n_paths, float(plan.pot))
     cash = np.zeros(n_paths)
+    isa = np.zeros(n_paths) + plan.isa
 
     if plan.take_pcls:
         lump = R.pcls(plan.pot)
@@ -141,7 +162,7 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
             cash += lump
 
     balances = np.empty((n_paths, plan.years + 1))
-    balances[:, 0] = pot + cash
+    balances[:, 0] = pot + cash + isa
     depleted = np.full(n_paths, -1)
     shortfall = np.zeros(n_paths)
 
@@ -170,7 +191,13 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
         # Tax-free cash is spent first — no tax, so it stretches furthest.
         from_cash = np.minimum(cash, need_net)
         cash -= from_cash
-        still_net = need_net - from_cash
+        # The ISA is drawn AFTER retained tax-free cash and BEFORE the pension.
+        # Placing it second keeps isa = 0 identical to the shipped engine.
+        # NOTE this order is HARD-CODED and, since the ISA now grows, it is
+        # knowingly not the best one — see the assumptions block on the page.
+        from_isa = np.minimum(isa, need_net - from_cash)
+        isa -= from_isa
+        still_net = need_net - from_cash - from_isa
         # Re-gross only the remaining net requirement. The linear scaling is
         # exact when from_cash is 0 or the whole need; between those it is a
         # simplification. Disclosed in uk_rules.LIMITATIONS — an earlier
@@ -184,7 +211,8 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
         shortfall += unmet
         pot -= taken
 
-        newly_dry = (pot <= 1e-6) & (cash <= 1e-6) & (depleted < 0) & (unmet > 0)
+        newly_dry = ((pot <= 1e-6) & (cash <= 1e-6) & (isa <= 1e-6)
+                     & (depleted < 0) & (unmet > 0))
         depleted[newly_dry] = age
 
         pot *= (1.0 + r[:, y])
@@ -194,7 +222,12 @@ def simulate(plan: Plan, annual_returns: np.ndarray,
             cash = cash * (1.0 + r[:, y])
         elif plan.pcls_cash_real:
             cash = cash * (1.0 + plan.pcls_cash_real)
-        balances[:, y + 1] = pot + cash
+        # The ISA grows by its OWN rule, never by pcls_held_as.
+        if plan.isa_held_as == "invested":
+            isa = isa * (1.0 + r[:, y])
+        elif plan.isa_real:
+            isa = isa * (1.0 + plan.isa_real)
+        balances[:, y + 1] = pot + cash + isa
 
     return Result(plan=plan, engine_name=engine_name, balances=balances,
                   depleted_age=depleted, shortfall=shortfall, returns=r)

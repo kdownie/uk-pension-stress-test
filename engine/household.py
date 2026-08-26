@@ -234,6 +234,12 @@ class Household:
     # See Plan.sp_real_growth — the two engines must agree. 0.0 reproduces the
     # behaviour shipped before 25 August 2026: the triple lock assumed gone.
     sp_real_growth: float = 0.0
+    # STAGE D — see Plan.isa in decumulation.py for the full note. The two
+    # engines must agree. Household-level, not per-person: ownership buys only
+    # the subscription cap and the death rules, both stage G.
+    isa: float = 0.0
+    isa_held_as: str = "invested"
+    isa_real: float = 0.0
     # See DecumulationParams/Plan.pcls_held_as — the two engines must agree.
     # "cash" with pcls_cash_real = 0.0 reproduces the behaviour shipped before
     # 24 August 2026, where retained tax-free cash silently earned nothing.
@@ -281,6 +287,7 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
 
     pots = np.array([[p.pot for p in hh.people]] * n_paths, dtype=float)
     cash = np.zeros(n_paths)
+    isa = np.zeros(n_paths) + hh.isa
     for j, p in enumerate(hh.people):
         # A person already dead when the projection starts takes no tax-free
         # cash. The entitlement dies with the member: the pot passes across
@@ -296,7 +303,7 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
                 cash += lump
 
     balances = np.empty((n_paths, years + 1))
-    balances[:, 0] = pots.sum(axis=1) + cash
+    balances[:, 0] = pots.sum(axis=1) + cash + isa
     depleted = np.full(n_paths, -1)
     tax_paid = np.zeros(n_paths)
     first_death_year = None
@@ -335,8 +342,15 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
         # Tax-free cash first: no tax, so it stretches furthest.
         from_cash = np.minimum(cash, need_net)
         cash -= from_cash
+        # ISA after retained tax-free cash, before the pensions. This order is
+        # hard-coded and knowingly not optimal now that the ISA grows — see
+        # the assumptions block on the page. isa = 0 reproduces the shipped
+        # engine exactly.
+        from_isa = np.minimum(isa, need_net - from_cash)
+        isa -= from_isa
         frac = np.where(need_net > 0,
-                        (need_net - from_cash) / max(need_net, 1e-9), 0.0)
+                        (need_net - from_cash - from_isa) / max(need_net, 1e-9),
+                        0.0)
 
         # On first death the deceased's pot passes to the survivor and is
         # pooled — pensions normally sit outside the estate and can be kept
@@ -392,12 +406,17 @@ def simulate_household(hh: Household, annual_returns: np.ndarray
 
         pots *= (1.0 + r[:, y])[:, None]
         np.maximum(pots, 0.0, out=pots)
+        # The ISA grows by its OWN rule, never by pcls_held_as (34d).
+        if hh.isa_held_as == "invested":
+            isa = isa * (1.0 + r[:, y])
+        elif hh.isa_real:
+            isa = isa * (1.0 + hh.isa_real)
         # Retained tax-free cash grows too — see Household.pcls_held_as.
         if hh.pcls_held_as == "invested":
             cash = cash * (1.0 + r[:, y])
         elif hh.pcls_cash_real:
             cash = cash * (1.0 + hh.pcls_cash_real)
-        balances[:, y + 1] = pots.sum(axis=1) + cash
+        balances[:, y + 1] = pots.sum(axis=1) + cash + isa
 
     return HouseholdResult(
         hh=hh, balances=balances, depleted_age=depleted,
