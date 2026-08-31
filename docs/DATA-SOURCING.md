@@ -1,6 +1,11 @@
 # The data question
 
-> **RESOLVED 25 August 2026 — read §H first.** The Bank of England answered,
+> **SUPERSEDED 31 August 2026 — read §I first, then §H.** The Millennium
+> dataset is **not used by this project**, and the two remaining jobs it was
+> being kept for have both gone. The data actually shipped is **ONS, under the
+> Open Government Licence** (§I). The Bank's permission is real and unused.
+>
+> **RESOLVED 25 August 2026 — read §H.** The Bank of England answered,
 > and the answer changes two conclusions in this document. The licence question
 > is closed (permission granted, non-commercial, full citation). The equity
 > plan is dead: the dataset's only share price index runs **1962–2017 and
@@ -166,8 +171,8 @@ confirms the licence in writing.
 > It was not: the data itself cannot support the job. If a historical engine is
 > ever wanted, **JST is now the shorter path** — total returns supplied, back to
 > 1870, and its non-commercial term is no worse than the one already accepted
-> from the Bank. Use JST during development as a cross-check on
-your own construction — never shipped, so NC never bites.
+> from the Bank. Use JST during development as a cross-check on your own
+> construction — never shipped, so NC never bites.
 
 This inverts the original plan, and it follows from the prototype result rather
 than from the licensing: engine sophistication was never where the value was.
@@ -302,6 +307,15 @@ Pension real growth were both exposed as user controls (§29–§32); **sourcing
 their ranges and defaults from this dataset is the outstanding work, and it is
 what the permission is for.**
 
+> **WRONG, 31 August 2026 — this section is the last one standing and it falls
+> too. See §I.** The reasoning above is sound and the conclusion is not, for a
+> reason nothing in this document had checked: **the Millennium dataset ends in
+> 2016.** The inflation assumption depends most on 2022, when UK CPI reached
+> **9.1%**. Sourced from this dataset the control's range would top out at
+> **4.5%** — below a value the page's own hint text already cited. The dataset
+> is excellent on long-run UK prices and useless on the recent observation that
+> matters. The ranges were sourced from **ONS** instead.
+
 **The regime objection stands.** Do not bootstrap 1209 into a 2026 projection.
 Use it to bound a disclosed assumption, and for labelled historical what-ifs.
 
@@ -315,6 +329,8 @@ Use it to bound a disclosed assumption, and for labelled historical what-ifs.
 | ShareAlike | No | **Yes** |
 | Covers 1900 | **No** | **Yes** |
 | Long-run UK inflation, rates, wages | **Yes, centuries** | Limited |
+| **Most recent observation** | **2016** | 2020s (updated) |
+| Sees 2022 inflation (CPI 9.1%) | **No** | — |
 
 **JST is better on every axis except ShareAlike** — and the download-the-recipe
 approach in H1 dissolves ShareAlike exactly as it dissolves the MIT conflict.
@@ -336,3 +352,90 @@ wanted, the Bank's data for the macro backbone.
   sets for a payoff §5 prices at 2.2pp.)
 - JST Macrohistory — https://www.macrohistory.net/database/ (CC BY-NC-SA 4.0;
   equity total return, capital gain and dividend yield, 18 countries from 1870)
+
+### Sources added 31 August 2026 — the data actually shipped
+
+- ONS [D7G7](https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7g7/mm23)
+  — CPI annual rate, dataset MM23, 1989–2025.
+- ONS [KAB9](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/emp)
+  and [A2FD](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/a2fd/emp)
+  — average weekly earnings, nominal and real, dataset EMP, 2000–2025.
+- All three retrieved 31 August 2026 and bundled in `engine/ons_data.py`.
+  **Contains public sector information licensed under the
+  [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).**
+
+---
+
+## I. What the project actually ships — and the Bank's dataset set aside
+
+**31 August 2026.** This section exists because the body of this file spends
+several thousand words choosing between two datasets, **and the project ships
+neither.** A reader arriving cold should not have to work that out.
+
+### I1. The data in the repository
+
+| | |
+|---|---|
+| **Source** | ONS — CPI (D7G7, MM23) and average weekly earnings (KAB9, A2FD, EMP) |
+| **Where** | `engine/ons_data.py`, bundled as ordinary source |
+| **Licence** | **Open Government Licence v3.0** |
+| **What it does** | sources the ranges and defaults of the two policy controls (§29–§32), and the triple-lock finding on `findings.html` §10 |
+| **What it does not do** | it is **not** a return engine. There is still no historical bootstrap, and §A's recommendation — ship with FCA projection rates and no historical dataset — stands unchanged and correct. |
+
+**The licence problem this whole document worries about does not arise with
+ONS.** The OGL permits commercial use, redistribution and adaptation with
+attribution. So there is no conflict with the repository's MIT licence, no
+`data/` carve-out, no download-on-demand script, and no checksum pinning — all of
+which §H1 correctly identified as necessary *for Bank data*. None of it had to be
+built.
+
+### I2. Why the Bank's dataset is not used, in one line each
+
+| Job | Verdict | Why |
+|---|---|---|
+| Equity total returns | **No** (§H2, 25 Aug) | price index only, no dividend yield; 1962–2017 misses 1900 |
+| The two policy assumption ranges | **No** (§I, 31 Aug) | **ends 2016**, so it cannot see 2022's 9.1% CPI |
+
+**The permission is real, correctly obtained, and unused.** It is a written
+non-commercial grant over ~130 UK series from one of the dataset's two authors,
+and the workbook genuinely is excellent on long-run UK prices, rates and yields.
+It is kept on file. It is simply not the answer to either question this project
+actually had.
+
+**The reason for the second rejection is asserted in `verify.py` section I5** —
+a test recomputes that a source ending in 2016 would cap the range at 4.5% while
+the observed maximum is 9.1%. A future session cannot quietly revert to the
+Millennium dataset without that test explaining why not.
+
+### I3. The pattern, which is the reusable part
+
+Three passes at this dataset, in order: **§G** worked out the licence position
+from published terms and got it exactly right. **§27** obtained the permission,
+which took ten days. **§H2** then opened the file and found it could not do
+equities. **§I** finds it cannot do the assumption ranges either.
+
+**Every rejection came from looking at the data. None came from the licence.**
+
+§H2's note already says *"check the fields before chasing the rights"*. The third
+instance sharpens it, because this time the disqualifying fact was not a missing
+column but a **date** — the kind of thing that does not appear in a field list
+either, and that nobody thinks to check because a dataset spanning a millennium
+does not feel like one that stops nine years ago.
+
+**The rule, generalised: a permission obtained is not a source validated, and
+"what does this dataset cover" includes when it stops.** Each field check cost
+about twenty minutes. Each one saved a build.
+
+### I4. What is still open
+
+- **JST** remains the shorter path *if* a return history is ever wanted —
+  total returns supplied, back to 1870, NC no worse than the Bank's. §H4's
+  comparison stands. **But §A's recommendation stands above it**: the return
+  *assumption* is worth ±12pp and the path *shape* about 3pp, and only the
+  second needs a dataset at all.
+- **Tell Ryland Thomas.** He asked to be told, offered further help, and is
+  preparing an openly-licensed version of the dataset. There is now something
+  concrete to say: it could not do either job, for two specific and checkable
+  reasons. That reply has been outstanding since 25 August.
+- **The FCA maximum rates** may be under review — unchanged from the list above,
+  and still worth re-checking before any relaunch.
