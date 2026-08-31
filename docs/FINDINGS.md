@@ -26,6 +26,8 @@ A version of this written for a general reader is at
   return engine; the `household.py` lifetime-tax bug found and fixed (§8);
   Pfau's international results added to §2; the FCA "prescribed rates"
   description corrected throughout (§4).
+- **v1.2 — 31 August 2026.** The two policy assumptions sourced from ONS data
+  (§12); withdrawal ordering added to the engine.
 
 ---
 
@@ -496,6 +498,35 @@ this project models tax rules instead of stochastic processes.
 
 ---
 
+## 12. What the triple lock has actually been worth
+
+**The working for this lives on the public findings page, not here** — see
+[pensionstresstest.co.uk/findings.html#s10](https://pensionstresstest.co.uk/findings.html#s10),
+which carries both constructions, the table of which leg bound, and the caveats.
+Restating it in two places is how §21e's family of bugs starts, so this entry is
+a pointer and a summary only.
+
+The headline: running the triple lock's own formula — the higher of prices,
+earnings or 2.5% — over ONS data for 2001–2025 gives growth above inflation of
+**1.3–1.4% a year** (median 1.6%), the range covering two ways of measuring it.
+The **earnings** leg bound in 12 of 25 years, prices in 8, and the much-argued
+**2.5% floor in only 5**.
+
+The calculator's default is unchanged at **0%**, which is the assumption that the
+lock ends now. That is a political question and not the tool's to answer; what
+changed is that the default is now stated against a measured alternative instead
+of standing unexplained.
+
+**Source and licence.** ONS series D7G7 (CPI annual rate, MM23), KAB9 and A2FD
+(average weekly earnings, EMP), retrieved 31 August 2026. Contains public sector
+information licensed under the
+[Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+**Note this is ONS, not the Bank of England's Millennium dataset** — that dataset
+ends in 2016 and so cannot see 2022's 9.1% CPI, which is the observation the
+inflation assumption most depends on.
+
+---
+
 ## Sources
 
 - W. P. Bengen, "Determining Withdrawal Rates Using Historical Data",
@@ -505,3 +536,10 @@ this project models tax rules instead of stochastic processes.
 - FCA Handbook, [COBS 13 Annex 2](https://www.handbook.fca.org.uk/handbook/COBS/13/Annex2.html).
 - [gov.uk/income-tax-rates](https://www.gov.uk/income-tax-rates),
   [gov.uk/new-state-pension](https://www.gov.uk/new-state-pension/what-youll-get).
+- ONS [D7G7](https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7g7/mm23)
+  (CPI annual rate, MM23),
+  [KAB9](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/emp)
+  and [A2FD](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/a2fd/emp)
+  (average weekly earnings, EMP), retrieved 31 August 2026. Contains public sector
+  information licensed under the
+  [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
