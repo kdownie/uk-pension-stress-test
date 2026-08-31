@@ -474,6 +474,138 @@ async def main():
             if not ok:
                 fails.append(f"disclosure missing: {_why}")
 
+        # ==================================================================
+        # F8. STAGE E — WITHDRAWAL ORDER, JS vs PYTHON
+        #
+        # Deterministic (zero volatility, one path), so every figure is exact
+        # and nothing here is a sampling artefact. Single person only — the
+        # engines both REFUSE ordering for a couple, and F8f checks that they
+        # refuse rather than silently falling back.
+        # ==================================================================
+        print("\nF8. WITHDRAWAL ORDER — JS vs PYTHON")
+        print("=" * 86)
+
+        _ORDERS = ("tax_free_first", "fill_allowance",
+                   "proportional", "pension_first")
+
+        def _cfg8(order, pot=900_000, isa=0, pcls_held="invested"):
+            return dict(pot=pot, retire=60, end=95, target=30_000,
+                        sp=12_548, spAge=67, other=0, takePcls=True,
+                        pclsSpend=False, pclsHeld=pcls_held, pclsCashReal=0.0,
+                        isa=isa, isaHeld="invested", isaReal=0.0,
+                        real=0.03, vol=0.0, conv="geo", freeze=0,
+                        freezeInfl=0.03, spGrowth=0.0, paths=1, couple=False,
+                        region="ruk", pot2=0, retire2=0, sp2=0, spAge2=200,
+                        other2=0, deathAge=0, survFrac=0.67, order=order)
+
+        def _py8(order, pot=900_000, isa=0, pcls_held="invested"):
+            plan = Plan(pot=pot, retire_age=60, end_age=95,
+                        target_net_income=30_000, state_pension_age=67,
+                        state_pension_annual=12_548, take_pcls=True,
+                        isa=isa, isa_held_as="invested",
+                        pcls_held_as=pcls_held, withdrawal_order=order)
+            return simulate(plan, np.full((1, 35), 0.03))
+
+        # F8a. Closing balances agree, order by order, on a case that does NOT
+        # deplete. Depletion would floor the balance at zero and make four
+        # different strategies agree perfectly while doing nothing (10d).
+        _g8 = {}
+        for _o in _ORDERS:
+            _js = await pg.evaluate(
+                "cfg => { const r=simulate(cfg); return r.bal[r.years]; }",
+                _cfg8(_o))
+            _pyr = _py8(_o)
+            if _pyr.depleted_age[0] > 0:
+                fails.append(f"F8a censored: {_o} depleted")
+            _g8[_o] = (_js, float(_pyr.balances[0, -1]))
+            chk(f"closing balance — {_o}", _js, float(_pyr.balances[0, -1]), 1.0)
+
+        # F8b. And with an ISA present, which is the case ordering exists for.
+        for _o in _ORDERS:
+            _js = await pg.evaluate(
+                "cfg => { const r=simulate(cfg); return r.bal[r.years]; }",
+                _cfg8(_o, pot=600_000, isa=300_000))
+            _pyr = _py8(_o, pot=600_000, isa=300_000)
+            if _pyr.depleted_age[0] > 0:
+                fails.append(f"F8b censored: {_o} depleted")
+            chk(f"closing balance, £300k ISA — {_o}", _js,
+                float(_pyr.balances[0, -1]), 1.0)
+
+        # F8c. EFFECT ASSERTIONS, separately in each engine. This is the check
+        # that 24c and 35c row (b) exist to force: strip the feature from BOTH
+        # engines and every comparison above still passes.
+        for _eng, _i in (("JS", 0), ("Python", 1)):
+            _vals = [_g8[_o][_i] for _o in _ORDERS]
+            ok = max(_vals) - min(_vals) > 1_000.0
+            print(f"  {'PASS' if ok else 'FAIL'}  "
+                  f"{_eng + ' — the order changes the answer':<52}"
+                  f"spread {max(_vals)-min(_vals):>12,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: withdrawal order made no difference")
+
+            # And the specific mechanism, not merely "something moved":
+            # fill_allowance must beat the shipped order once the pools grow.
+            ok = _g8["fill_allowance"][_i] > _g8["tax_free_first"][_i]
+            print(f"  {'PASS' if ok else 'FAIL'}  "
+                  f"{_eng + ' — fill_allowance beats tax_free_first':<52}"
+                  f"{_g8['fill_allowance'][_i]:>12,.0f} > "
+                  f"{_g8['tax_free_first'][_i]:>11,.0f}")
+            if not ok:
+                fails.append(f"{_eng}: fill_allowance did not beat the default")
+
+        # F8d. With NO tax-free pool the four orders must COINCIDE — in the JS
+        # as well as in Python. A strategy that had stopped respecting balances
+        # would show up here and nowhere else.
+        _nf = [await pg.evaluate(
+            "cfg => { const r=simulate(cfg); return r.bal[r.years]; }",
+            {**_cfg8(_o), "pclsSpend": True}) for _o in _ORDERS]
+        ok = max(_nf) - min(_nf) < 1.0
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'JS — no tax-free pool => all orders coincide':<52}"
+              f"spread {max(_nf)-min(_nf):>12,.6f}")
+        if not ok:
+            fails.append("JS: orders differ with no tax-free pool")
+
+        # F8e. An omitted `order` must fall back to the Python default.
+        _bare = _cfg8("tax_free_first")
+        del _bare["order"]
+        _js_bare = await pg.evaluate(
+            "cfg => { const r=simulate(cfg); return r.bal[r.years]; }", _bare)
+        chk("omitted order defaults to tax_free_first, as Python does",
+            _js_bare, float(_py8("tax_free_first").balances[0, -1]), 1.0)
+
+        # F8f. BOTH engines must REFUSE what they cannot do, rather than
+        # silently doing something else. An unknown order, and ordering for a
+        # couple — which is out of scope for this stage because it interacts
+        # with the tax-optimal split.
+        # These check the MESSAGE, not merely that something threw, and the
+        # reason is worth recording. The first version asked only "did it
+        # throw?" and stayed GREEN when the guard was deleted — because
+        # without the guard the couple case runs on to a null tax curve and
+        # crashes there instead. A downstream crash imitated the guard
+        # perfectly. That is 10d's shape in a new place: the assertion was
+        # true for a reason that had nothing to do with what it claimed.
+        async def _refuses(label, cfg, want, failtag):
+            msg = await pg.evaluate(
+                "cfg => { try { simulate(cfg); return ''; } "
+                "catch(e) { return String(e.message || e); } }", cfg)
+            ok = want in msg
+            print(f"  {'PASS' if ok else 'FAIL'}  {label:<52}"
+                  f"{(msg[:40] or 'ACCEPTED') if not ok else 'refused explicitly'}")
+            if not ok:
+                fails.append(failtag)
+
+        await _refuses("JS — an unknown order is refused",
+                       {**_cfg8("tax_free_first"), "order": "cheapest"},
+                       "unknown withdrawal order",
+                       "JS: unknown order not explicitly refused")
+        await _refuses("JS — ordering for a couple is refused, not faked",
+                       {**_cfg8("fill_allowance"), "couple": True,
+                        "pot2": 200_000, "retire2": 60, "sp2": 12_548,
+                        "spAge2": 67},
+                       "single-person only",
+                       "JS: couple ordering not explicitly refused")
+
         print("\nG. PAGE HEALTH")
         print("=" * 86)
         for sel, label in [("#s_succ", "success rate"), ("#s_safe", "safe income"),

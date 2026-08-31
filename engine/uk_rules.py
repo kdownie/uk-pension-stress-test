@@ -91,7 +91,14 @@ LIMITATIONS = [
     "Within a year, when retained tax-free cash covers part of the income, "
     "the taxable withdrawal is scaled linearly rather than re-grossed exactly. "
     "Exact when the cash covers none or all of the need; a simplification in "
-    "between. See the note in decumulation.py.",
+    "between. See the note in decumulation.py. This applies to the SHIPPED "
+    "withdrawal order only: the alternative orders re-gross exactly, via "
+    "tax_curve. The difference is about 0.1pp (23c), which is why the shipped "
+    "order was not changed to match — moving a published figure by less than "
+    "the bar is not worth the loss of comparability.",
+    "Withdrawal ORDERING is modelled for a single person only. For a couple "
+    "the order interacts with the tax-optimal split across two people, and "
+    "both engines refuse the combination rather than approximating it.",
     "Tax bands assumed to move with inflation by default. That is NOT current "
     "policy — see freeze_bands_until in DecumulationParams.",
     "Full State Pension assumed if state_pension_weekly is left at default. "
@@ -252,6 +259,76 @@ def gross_for_net(target_net: float, other_taxable: float = 0.0,
         else:
             hi = mid
     return (lo + hi) / 2.0
+
+
+def tax_curve(other_taxable: float = 0.0, region: str = "ruk",
+              band_uprating: float = 1.0):
+    """
+    The (gross, net) knots of the withdrawal-to-net map for someone who
+    already has `other_taxable` of taxable income.
+
+    WHY THIS EXISTS — added for withdrawal ordering, 31 August 2026.
+    ----------------------------------------------------------------
+    `gross_for_net` is a scalar bisection. Ordering strategies need the
+    inverse PER PATH — how much gross a path must draw depends on what its
+    own tax-free pools still hold — and 20,000 bisections a year is not
+    affordable. The simulator's existing answer was to solve once and scale
+    the result linearly (`frac` in decumulation.py), which is exact only when
+    the tax-free pools cover none or all of the requirement and an
+    approximation in between (see LIMITATIONS above; 23c prices it at ~0.1pp).
+
+    Income tax here is piecewise linear in income, with kinks only where the
+    marginal rate changes. So net-from-gross is piecewise linear too, and
+    linear interpolation on the kinks is not an approximation of that
+    function — it IS that function. `np.interp` then inverts it, vectorised,
+    for a whole path array at once.
+
+    The final knot is deliberately far out (£5m of withdrawal). Above the
+    additional-rate threshold the marginal rate never changes again, so one
+    distant knot represents the whole unbounded top rung exactly. `np.interp`
+    CLAMPS rather than extrapolating, which is why that knot has to sit beyond
+    any reachable withdrawal rather than merely beyond the last threshold.
+
+    Verified against `gross_for_net` over 378 combinations of region, band
+    freeze, existing income and target — including the taper zone and a
+    35-year freeze — agreeing to 5e-8 of a penny. See verify.py section H.
+
+    Returns (gross_knots, net_knots), both ascending, both starting at 0.0.
+    """
+    reg = REGIONS[region]
+    pa = ASSUMPTIONS["personal_allowance"]["value"] * band_uprating
+    bps = [0.0, pa]
+    x = pa
+    for width, _ in reg["bands"]:
+        if width is None:
+            break
+        x += width * band_uprating
+        bps.append(x)
+    bps += [ASSUMPTIONS["pa_taper_threshold"]["value"] * band_uprating,
+            reg["top_from"] * band_uprating]
+    bps = sorted(set(b for b in bps if b >= 0))
+
+    gross = [0.0] + [b - other_taxable for b in bps if b > other_taxable]
+    gross.append(other_taxable + 5_000_000.0)
+    base = net_income(other_taxable, region, band_uprating)
+    net = [net_income(other_taxable + g, region, band_uprating) - base
+           for g in gross]
+    return gross, net
+
+
+def allowance_room(other_taxable: float = 0.0, region: str = "ruk",
+                   band_uprating: float = 1.0) -> float:
+    """
+    Taxable withdrawal still available at a ZERO marginal rate, given
+    `other_taxable` already in payment.
+
+    This is what the `fill_allowance` withdrawal order targets. Note that it
+    collapses to almost nothing once the State Pension is in payment — the
+    State Pension is taxable and fills the allowance itself, which is 23e's
+    finding that the best withdrawal order changes at State Pension age.
+    """
+    pa = ASSUMPTIONS["personal_allowance"]["value"] * band_uprating
+    return max(0.0, pa - other_taxable)
 
 
 # --------------------------------------------------------------------------

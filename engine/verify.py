@@ -17,7 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 import uk_rules as R
-from decumulation import Plan, simulate
+from decumulation import Plan, simulate, WITHDRAWAL_ORDERS
 
 PASS, FAIL = "  PASS", "  FAIL"
 _failures = []
@@ -173,6 +173,155 @@ if not ke_ok:
     _failures.append("knife-edge case")
 print(f"{PASS if ke_ok else FAIL}  4% return / 4% draw survives but does not "
       f"grow  (end pot £{knife.balances[0,-1]:,.0f})")
+
+# ==========================================================================
+# G. THE VECTORISED TAX CURVE  (uk_rules.tax_curve)
+#
+# tax_curve interpolates the net-from-gross map on its kinks. Because income
+# tax is piecewise linear, that interpolation is not an approximation of the
+# tax function — it IS the tax function. This section is what entitles the
+# ordering code to rely on it, and it checks against the INDEPENDENT bisection
+# in gross_for_net rather than against itself.
+# ==========================================================================
+print("\nG. THE VECTORISED TAX CURVE  (must invert gross_for_net exactly)")
+print("=" * 92)
+
+_worst_inv = _worst_fwd = 0.0
+_cases = 0
+for _region in ("ruk", "scotland"):
+    for _up in (1.0, 1.0 / 1.03 ** 20, 1.0 / 1.03 ** 35):
+        for _other in (0.0, 11_502.0, 12_548.0, 25_000.0, 60_000.0,
+                       99_000.0, 130_000.0):
+            _gk, _nk = R.tax_curve(_other, _region, _up)
+            for _tn in (1.0, 5_000.0, 12_570.0, 30_000.0, 47_000.0,
+                        80_000.0, 90_000.0, 150_000.0, 300_000.0):
+                _cases += 1
+                _exact = R.gross_for_net(_tn, _other, _region, _up)
+                _g = float(np.interp(_tn, _nk, _gk))
+                _worst_inv = max(_worst_inv, abs(_exact - _g))
+                _delivered = (R.net_income(_other + _g, _region, _up)
+                              - R.net_income(_other, _region, _up))
+                _worst_fwd = max(_worst_fwd, abs(_delivered - _tn))
+_inv_ok = _worst_inv < 1e-4 and _worst_fwd < 1e-4
+if not _inv_ok:
+    _failures.append("tax_curve does not match gross_for_net")
+print(f"{PASS if _inv_ok else FAIL}  {_cases} cases (both regions, taper zone, "
+      f"35-year freeze)")
+print(f"        worst inverse error £{_worst_inv:.9f}, "
+      f"worst delivery error £{_worst_fwd:.9f}")
+
+# The taper zone is the case that broke optimal_split in 20, so name it.
+_gk, _nk = R.tax_curve(99_000.0, "ruk", 1.0)
+_g60 = float(np.interp(20_000.0, _nk, _gk))
+_taper_ok = abs(_g60 - R.gross_for_net(20_000.0, 99_000.0, "ruk", 1.0)) < 1e-4
+if not _taper_ok:
+    _failures.append("tax_curve wrong in the taper zone")
+print(f"{PASS if _taper_ok else FAIL}  taper zone: £20,000 net on top of "
+      f"£99,000 costs £{_g60:,.2f} gross ({1 - 20_000.0/_g60:.1%} effective)")
+
+# ==========================================================================
+# H. WITHDRAWAL ORDER  (Plan.withdrawal_order — stage E, 23e/36d)
+#
+# The measurement discipline here is 10d's, and it is not optional: lifetime
+# tax across all paths is CENSORED, because a pot that runs dry stops paying
+# tax. Every comparison below is made on a case asserted NOT to deplete.
+# ==========================================================================
+print("\nH. WITHDRAWAL ORDER")
+print("=" * 92)
+
+_R3 = np.full((1, 40), 0.03)
+
+
+def _ord(order, **kw):
+    return simulate(Plan(end_age=95, withdrawal_order=order, **kw), _R3)
+
+
+def _uncensored(tag, results):
+    for _o, _r in results.items():
+        if _r.depleted_age[0] > 0:
+            _failures.append(f"{tag} censored: {_o} depleted")
+
+
+# H1. With NO tax-free pool there is only one place to draw from, so every
+# order must give BYTE-IDENTICAL results.
+_h1 = {o: _ord(o, pot=900_000.0, target_net_income=30_000.0,
+               pcls_spent_immediately=True) for o in WITHDRAWAL_ORDERS}
+_uncensored("H1", _h1)
+_b = [float(r.balances[0, -1]) for r in _h1.values()]
+_t = [float(r.tax_paid[0]) for r in _h1.values()]
+_h1_ok = max(_b) - min(_b) < 0.01 and max(_t) - min(_t) < 0.01
+if not _h1_ok:
+    _failures.append("orders differ with no tax-free pool")
+print(f"{PASS if _h1_ok else FAIL}  no tax-free pool => all four orders "
+      f"coincide  (spread £{max(_b)-min(_b):.6f})")
+
+# H2. The default MUST reproduce the shipped engine, linear `frac` and all.
+_d = Plan(pot=500_000.0, target_net_income=30_000.0, end_age=95)
+_h2_ok = _d.withdrawal_order == "tax_free_first" and _d.exact_gross_up is False
+if not _h2_ok:
+    _failures.append("default plan no longer reproduces the shipped engine")
+print(f"{PASS if _h2_ok else FAIL}  default is tax_free_first with the shipped "
+      f"linear re-grossing")
+
+# H3. An unknown order must be REFUSED, not silently treated as the default.
+try:
+    Plan(withdrawal_order="cheapest")
+    _h3_ok = False
+    _failures.append("unknown withdrawal_order accepted")
+except ValueError:
+    _h3_ok = True
+print(f"{PASS if _h3_ok else FAIL}  an unknown order is refused, not silently "
+      f"defaulted")
+
+# H4. EFFECT ASSERTION — the order must change the answer where 23b says it
+# can, i.e. once the tax-free pools grow. 24c: a parameter both engines ignore
+# identically agrees perfectly and means nothing.
+_h4 = {o: _ord(o, pot=900_000.0, target_net_income=30_000.0,
+               pcls_held_as="invested") for o in WITHDRAWAL_ORDERS}
+_uncensored("H4", _h4)
+_fin = {o: float(r.balances[0, -1]) for o, r in _h4.items()}
+_h4_ok = max(_fin.values()) - min(_fin.values()) > 1_000.0
+if not _h4_ok:
+    _failures.append("withdrawal_order made no difference")
+print(f"{PASS if _h4_ok else FAIL}  the order changes the answer when the "
+      f"tax-free pools grow")
+for _o in WITHDRAWAL_ORDERS:
+    print(f"        {_o:<16} final £{_fin[_o]:>12,.0f}   "
+          f"lifetime tax £{_h4[_o].tax_paid[0]:>10,.0f}")
+
+# H5. 23b's finding, re-asserted as a guard: with the tax-free pools at 0%
+# real, spending them first is optimal or within a whisker. If a future change
+# makes the shipped default look bad on ITS OWN assumptions, that is a bug in
+# the change, not a discovery.
+_h5 = {o: _ord(o, pot=900_000.0, target_net_income=30_000.0)
+       for o in WITHDRAWAL_ORDERS}
+_uncensored("H5", _h5)
+_ftf = float(_h5["tax_free_first"].balances[0, -1])
+_fbest = max(float(r.balances[0, -1]) for r in _h5.values())
+_h5_ok = _fbest - _ftf < 0.02 * _ftf
+if not _h5_ok:
+    _failures.append("tax_free_first no longer near-optimal at 0% real")
+print(f"{PASS if _h5_ok else FAIL}  at 0% real on the tax-free pools the "
+      f"shipped order is within 2% of the best (23b)")
+
+# H6. 23e's mechanism: fill_allowance earns its advantage BEFORE State Pension
+# age and loses it after, because the State Pension fills the allowance itself.
+_rb = R.allowance_room(0.0, "ruk", 1.0)
+_ra = R.allowance_room(R.STATE_PENSION_ANNUAL, "ruk", 1.0)
+_h6_ok = _rb > 12_000.0 and _ra < 100.0
+if not _h6_ok:
+    _failures.append("allowance room does not collapse at State Pension age")
+print(f"{PASS if _h6_ok else FAIL}  allowance room collapses at State Pension "
+      f"age: £{_rb:,.0f} -> £{_ra:,.0f}")
+
+# H7. Lifetime tax must be a real read-out, and exact on the shipped path even
+# when the pot depletes — the obvious linear version is wrong precisely there.
+_dep = _ord("tax_free_first", pot=200_000.0, target_net_income=30_000.0)
+_h7_ok = _dep.depleted_age[0] > 0 and _dep.tax_paid[0] > 0
+if not _h7_ok:
+    _failures.append("tax_paid not reported on a depleting path")
+print(f"{PASS if _h7_ok else FAIL}  lifetime tax is reported on a depleting "
+      f"path too  (£{_dep.tax_paid[0]:,.0f} to age {_dep.depleted_age[0]:.0f})")
 
 print("\n" + "=" * 92)
 if _failures:
