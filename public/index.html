@@ -663,6 +663,54 @@ function grossForNet(targetNet, other, uprate, region){
 }
 const pcls = pot => Math.min(pot*RULES.pclsFraction, RULES.lumpSumAllowance);
 
+/* Withdrawal orders. MIRRORS WITHDRAWAL_ORDERS in decumulation.py — the two
+   engines must agree, and 10c is why: a constant only one engine can express
+   is a constant nobody is checking. */
+const WITHDRAWAL_ORDERS = ["tax_free_first","fill_allowance",
+                           "proportional","pension_first"];
+
+/* The (gross, net) knots of the withdrawal-to-net map, for someone who already
+   has `other` of taxable income. MIRRORS uk_rules.tax_curve — see the long
+   note there for why interpolating on the kinks is EXACT rather than an
+   approximation: income tax is piecewise linear, so net-from-gross is too, and
+   linear interpolation between kinks reproduces the function itself.
+
+   grossForNet is a bisection, and ordering needs the inverse per PATH rather
+   than per year. 70 bisection steps x 20,000 paths x 35 years is not something
+   a browser should be asked to do; two array lookups is. */
+function taxCurve(other, uprate, region){
+  const pa = RULES.personalAllowance*uprate;
+  const bps=[0,pa]; let x=pa;
+  const _reg=REGIONS[region||"ruk"];
+  for(const [w,] of _reg.bands){ if(w===null) break; x+=w*uprate; bps.push(x); }
+  bps.push(RULES.taperFrom*uprate, _reg.topFrom*uprate);
+  const sorted=[...new Set(bps.filter(b=>b>=0))].sort((a,b)=>a-b);
+  const gross=[0], base=netIncome(other,uprate,region||"ruk");
+  for(const b of sorted) if(b>other) gross.push(b-other);
+  gross.push(other+5_000_000);           /* one distant knot represents the whole
+                                            unbounded top rung exactly */
+  const net=gross.map(g=>netIncome(other+g,uprate,region||"ruk")-base);
+  return {gross, net};
+}
+/* Monotonic piecewise-linear lookup. Clamps outside the knots, as np.interp
+   does — which is why taxCurve's last knot sits beyond any reachable draw. */
+function interp(x, xs, ys){
+  if(x<=xs[0]) return ys[0];
+  const n=xs.length;
+  if(x>=xs[n-1]) return ys[n-1];
+  let lo=0, hi=n-1;
+  while(hi-lo>1){ const m=(lo+hi)>>1; if(xs[m]<=x) lo=m; else hi=m; }
+  const t=(x-xs[lo])/(xs[hi]-xs[lo]||1);
+  return ys[lo]+t*(ys[hi]-ys[lo]);
+}
+/* Taxable withdrawal still available at a ZERO marginal rate. What
+   fill_allowance aims at. Collapses to near nothing once the State Pension is
+   in payment — 23e's finding that the best order changes at State Pension age.
+   Mirrors uk_rules.allowance_room. */
+function allowanceRoom(other, uprate){
+  return Math.max(0, RULES.personalAllowance*uprate - other);
+}
+
 /* ==================================================================
    SIMULATION
    ================================================================== */
@@ -699,6 +747,21 @@ function simulate(P){
   const isaStart   = (P.isa        ?? 0.0);
   const isaHeld    = (P.isaHeld    ?? "invested");
   const isaReal    = (P.isaReal    ?? 0.0);
+  // STAGE E — withdrawal order (23b, 23e, 36d). Mirrors Plan.withdrawal_order.
+  // "tax_free_first" is the shipped order and the default, and reproduces
+  // behaviour before 31 August 2026 exactly.
+  const order = (P.order ?? "tax_free_first");
+  if(!WITHDRAWAL_ORDERS.includes(order))
+    throw new Error("unknown withdrawal order: "+order);
+  // COUPLES ARE OUT OF SCOPE for this stage, and this throws rather than
+  // silently falling back. Ordering for a couple interacts with the
+  // tax-optimal SPLIT — the household's net-to-gross curve is a function of
+  // both people's thresholds and of optimalSplit's taper-zone correction —
+  // and that is a harder problem than the one 23e measured. Failing loudly is
+  // the point: a silent fallback to tax_free_first would be an output the
+  // caller believes is one thing and is another, which is 10b's mistake.
+  if(P.couple && order!=="tax_free_first")
+    throw new Error("withdrawal ordering is single-person only in this build");
   seedState = 987654321;
   const N = P.paths;
   const z = normals(N*years);
@@ -728,7 +791,11 @@ function simulate(P){
     const needNet = Math.max(0, target-netOther);
     const splits = optimalSplit(needNet, others, P.region, uprate);
     yearInfo.push({age, aliveB, needNet,
-      grossA: splits[0]||0, grossB: splits[1]||0});
+      grossA: splits[0]||0, grossB: splits[1]||0,
+      // STAGE E. Only built for the single-person case — see the guard above.
+      // Computed per YEAR, never per path, exactly as the splits are.
+      curve: couple ? null : taxCurve(others[0], uprate, P.region),
+      room:  couple ? 0    : allowanceRoom(others[0], uprate)});
   }
 
   const lumpA = P.takePcls ? pcls(P.pot) : 0;
@@ -752,26 +819,78 @@ function simulate(P){
       // On first death the pot passes to the survivor: pensions normally sit
       // outside the estate and can be kept in drawdown by a beneficiary.
       if(couple && !info.aliveB && !pooled){ potA+=potB; potB=0; pooled=true; }
-      const fromCash=Math.min(cash, info.needNet);
-      cash-=fromCash;
-      /* The ISA is drawn AFTER retained tax-free cash and BEFORE the pensions.
-         Second place keeps isa = 0 byte-identical to the shipped engine.
-         This order is HARD-CODED and, now that the ISA grows, it is knowingly
-         not the best one — stated in the assumptions block. Mirrors the Python
-         engines, which must agree. */
-      const fromIsa=Math.min(isa, info.needNet-fromCash);
-      isa-=fromIsa;
-      const frac = info.needNet>0
-        ? (info.needNet-fromCash-fromIsa)/info.needNet : 0;
-      let want=info.grossA*frac, takenA=Math.min(potA,want);
-      potA-=takenA; let short=want-takenA;
-      if(info.aliveB){
-        want=info.grossB*frac;
-        const takenB=Math.min(potB,want);
-        potB-=takenB; short+=want-takenB;
-        // one pot dry, the other not: cover from whichever still has money
-        if(short>1e-6){ const t=Math.min(potA,short); potA-=t; short-=t; }
-        if(short>1e-6){ const t=Math.min(potB,short); potB-=t; short-=t; }
+      let short;
+      if(order==="tax_free_first"){
+        /* ---------- THE SHIPPED PATH, unchanged ---------- */
+        const fromCash=Math.min(cash, info.needNet);
+        cash-=fromCash;
+        /* The ISA is drawn AFTER retained tax-free cash and BEFORE the
+           pensions. Second place keeps isa = 0 byte-identical to the shipped
+           engine. Mirrors the Python engines, which must agree. */
+        const fromIsa=Math.min(isa, info.needNet-fromCash);
+        isa-=fromIsa;
+        const frac = info.needNet>0
+          ? (info.needNet-fromCash-fromIsa)/info.needNet : 0;
+        let want=info.grossA*frac, takenA=Math.min(potA,want);
+        potA-=takenA; short=want-takenA;
+        if(info.aliveB){
+          want=info.grossB*frac;
+          const takenB=Math.min(potB,want);
+          potB-=takenB; short+=want-takenB;
+          // one pot dry, the other not: cover from whichever still has money
+          if(short>1e-6){ const t=Math.min(potA,short); potA-=t; short-=t; }
+          if(short>1e-6){ const t=Math.min(potB,short); potB-=t; short-=t; }
+        }
+      } else {
+        /* ---------- EXACT RE-GROSSING, and the ordering strategies ---------
+           Single person only (guarded above), so there is one pension pot.
+           Every pension draw in a year STACKS on the ones before it, so the
+           gross needed for an extra slice of net depends on what has already
+           been drawn this year. That is why potGross/potNet are cumulative and
+           each draw is re-solved on the cumulative curve: drawing 5k and then
+           5k more is not two independent 5k draws, and treating it as such
+           would understate the tax on the second. Mirrors decumulation.py. */
+        const {gross:gk, net:nk} = info.curve;
+        let potGross=0, potNet=0, got=0;
+        const drawPension = (wantNet, capNet) => {
+          let w=Math.max(wantNet,0);
+          if(capNet!==undefined) w=Math.min(w, Math.max(capNet,0));
+          const targetGross=interp(potNet+w, nk, gk);
+          const taken=Math.min(potA, Math.max(targetGross-potGross,0));
+          potA-=taken; potGross+=taken;
+          const newNet=interp(potGross, gk, nk);
+          const delivered=newNet-potNet; potNet=newNet;
+          return delivered;
+        };
+        const drawCash = w => { const t=Math.min(cash,Math.max(w,0)); cash-=t; return t; };
+        const drawIsa  = w => { const t=Math.min(isa, Math.max(w,0)); isa -=t; return t; };
+        const need=info.needNet;
+        if(order==="fill_allowance"){
+          /* The 0%-rate slice of the pension first. Once the State Pension is
+             in payment this room is near nothing — 23e's finding that the best
+             order changes at State Pension age. */
+          got+=drawPension(need-got, info.room);
+          got+=drawCash(need-got);
+          got+=drawIsa(need-got);
+          got+=drawPension(need-got);
+        } else if(order==="pension_first"){
+          got+=drawPension(need-got);
+          got+=drawCash(need-got);
+          got+=drawIsa(need-got);
+        } else {  /* proportional */
+          /* Pro rata by SPENDABLE value, not face value: a pound in the
+             pension is worth less than a pound in an ISA, and weighting by
+             balance would quietly over-draw the pension. */
+          const vPot=interp(potA, gk, nk), total=cash+isa+vPot, safe=Math.max(total,1e-9);
+          got+=drawPension(need*vPot/safe);
+          got+=drawCash(need*cash/safe);
+          got+=drawIsa(need*isa/safe);
+          /* a pool that could not deliver its share leaves a residual */
+          got+=drawCash(need-got);
+          got+=drawIsa(need-got);
+          got+=drawPension(need-got);
+        }
+        short=Math.max(need-got,0);
       }
       if(short>1e-6 && !failed){ failed=true; depAge[p]=info.age; }
       const g=1+Math.expm1(mu + P.vol*z[p*years+y]);
