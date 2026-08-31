@@ -439,19 +439,23 @@ footer a{color:var(--s450)}
 
       <label><span class="lbl">Inflation while bands are frozen
         <span class="val" id="v_freezeInfl">3%</span></span>
-        <input type="range" id="freezeInfl" min="0" max="8" step="0.25" value="3"></label>
+        <input type="range" id="freezeInfl" min="0" max="10" step="0.25" value="3"></label>
       <p class="hint">How fast frozen bands shrink depends entirely on this. It was
-        fixed at 3% and not shown until 25 August 2026. The Bank of England's
-        target is 2%; UK inflation exceeded 8% as recently as 2022. Only used
-        when bands are frozen.</p>
+        fixed at 3% and not shown until 25 August 2026. Over 1993&ndash;2025 UK CPI
+        inflation averaged <b>2.5% a year</b> and ranged from <b>0.0%</b> (2015) to
+        <b>9.1%</b> (2022) &mdash; <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7g7/mm23">ONS series D7G7</a>.
+        The Bank of England's target is 2%. The 3% default sits above that
+        period average. Only used when bands are frozen.</p>
 
       <label><span class="lbl">State Pension growth above inflation
         <span class="val" id="v_spGrowth">0%</span></span>
         <input type="range" id="spGrowth" min="-1" max="2" step="0.1" value="0"></label>
       <p class="hint">0% means the State Pension holds its value and no more —
         which assumes the triple lock ends now. The triple lock uprates by the
-        higher of inflation, average earnings or 2.5%, so it delivers growth
-        above inflation in most years it survives.</p>
+        higher of inflation, average earnings or 2.5%. Run over ONS data for
+        2001&ndash;2025 that formula would have delivered <b>1.3&ndash;1.4% a year
+        above inflation</b> (median 1.6%), the range covering two ways of
+        measuring it. <a href="/findings.html#s10">How that is worked out</a>.</p>
       <hr>
       <label><span class="lbl">Simulations <span class="val" id="v_paths">4,000</span></span>
         <input type="range" id="paths" min="500" max="20000" step="500" value="4000"></label>
@@ -519,7 +523,9 @@ const RULES = {
     sp:"https://www.gov.uk/new-state-pension/what-youll-get",
     inherit:"https://www.gov.uk/new-state-pension/inheriting-or-increasing-state-pension-from-a-spouse-or-civil-partner",
     lsa:"https://www.gov.uk/guidance/find-out-the-rules-around-individual-lump-sum-allowances",
-    fca:"https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html"
+    fca:"https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html",
+    cpi:"https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7g7/mm23",
+    awe:"https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/emp"
   }
 };
 /* Band WIDTHS stacked on the allowance, not the income ranges GOV.UK prints —

@@ -534,7 +534,77 @@ band is £325,000, the residence nil-rate band £175,000, and both are frozen
 until April 2030. This page knows nothing about the rest of your estate, so it
 cannot tell you which of those figures applies to you.</p>
 
-<h2><span class="num">10</span>How to check any of this</h2>
+<h2 id="s10"><span class="num">10</span>The triple lock has been worth about 1.3% a year &mdash; and the 2.5% floor is not why</h2>
+
+<p>The calculator defaults to <strong>0%</strong> State Pension growth above
+inflation, which is the assumption that the triple lock ends now. That default
+is unchanged, because what happens to the lock is a political question and not
+ours to answer. But it was an unexplained choice, and the size of the thing it
+switches off can be measured.</p>
+
+<p>The triple lock uprates the State Pension by the higher of price inflation,
+average earnings growth, or 2.5%. So the growth it delivers <em>above</em>
+inflation is <code>max(0, real earnings growth, 2.5% &minus; inflation)</code>.
+Run that formula over ONS data for 2001&ndash;2025:</p>
+
+<table>
+  <caption>Growth above inflation the triple lock formula would have delivered,
+    2001&ndash;2025, computed two ways. Method A deflates earnings by CPIH, as ONS
+    publishes it; method B takes nominal earnings less CPI, so a single price
+    index is used throughout.</caption>
+  <thead><tr><th>Construction</th><th class="n">Mean</th><th class="n">Median</th><th class="n">Highest year</th></tr></thead>
+  <tbody>
+    <tr><td>A &mdash; ONS real earnings index (CPIH)</td><td class="n">1.32%</td><td class="n">1.60%</td><td class="n">3.51%</td></tr>
+    <tr><td>B &mdash; nominal earnings less CPI</td><td class="n">1.41%</td><td class="n">1.60%</td><td class="n">3.91%</td></tr>
+  </tbody>
+</table>
+
+<p>The two differ by <strong>0.09 percentage points</strong> on the mean and agree
+exactly on the median, so the answer does not depend on which price index is
+used: <strong>about 1.3&ndash;1.4% a year in real terms</strong>. We give the range
+rather than one number because that is what the evidence supports.</p>
+
+<p>For scale: §3 puts 0.75% a year of State Pension growth at <strong>+5.7
+percentage points</strong> of success on the default scenario. The realised figure
+is roughly double that rate.</p>
+
+<h3>The 2.5% floor is the famous part and the smallest part</h3>
+
+<p>Public argument about the triple lock is mostly about the 2.5% floor &mdash; the
+leg that can raise the State Pension when both prices and wages are flat. Over
+these 25 years it was rarely the binding leg.</p>
+
+<table>
+  <caption>Which leg of the triple lock set the uprating, 2001&ndash;2025, method B.</caption>
+  <thead><tr><th>Binding leg</th><th class="n">Years</th></tr></thead>
+  <tbody>
+    <tr><td>Average earnings</td><td class="n"><span class="big">12</span></td></tr>
+    <tr><td>Prices &mdash; so no real growth at all</td><td class="n">8</td></tr>
+    <tr><td>The 2.5% floor</td><td class="n">5</td></tr>
+  </tbody>
+</table>
+
+<p>Earnings did the work. In a third of years the lock delivered nothing above
+inflation, because prices were rising fastest &mdash; which is the same mechanism
+that makes the lock worth least exactly when a pensioner needs it most.</p>
+
+<h3>What this does not show</h3>
+
+<ul>
+  <li><strong>Twenty-five years is one policy era, not a long run.</strong> It
+    contains the post-2008 real-wage stagnation and the 2022 inflation spike.
+    A different quarter-century would give a different number.</li>
+  <li><strong>This is the formula, not the policy.</strong> The triple lock was
+    only introduced in 2011 and was suspended for 2022&ndash;23. Applying it back to
+    2001 measures what the rule delivers on this data, not what pensioners
+    actually received.</li>
+  <li><strong>Earnings here are whole-economy total pay</strong>, which is the
+    series the uprating decision has used, but it includes bonuses.</li>
+  <li><strong>It says nothing about whether the lock survives.</strong> That is
+    the question the slider exists to let you answer yourself.</li>
+</ul>
+
+<h2><span class="num">11</span>How to check any of this</h2>
 
 <p>Every figure on this page comes out of code that anyone can run.</p>
 
@@ -581,6 +651,14 @@ in the repository.</p>
   <a href="https://handbook.fca.org.uk/handbook/COBS/13/Annex2.html">handbook.fca.org.uk</a>.<br>
   Tax and State Pension figures: <a href="https://www.gov.uk/income-tax-rates">gov.uk/income-tax-rates</a>,
   <a href="https://www.gov.uk/new-state-pension/what-youll-get">gov.uk/new-state-pension</a>.<br>
+  Inflation and earnings (§10): ONS
+  <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7g7/mm23">series D7G7</a>
+  (CPI annual rate, dataset MM23) and
+  <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/emp">series KAB9</a>
+  and <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/a2fd/emp">A2FD</a>
+  (average weekly earnings, dataset EMP), retrieved 31 August 2026. Contains public
+  sector information licensed under the
+  <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.<br>
   Pensions and inheritance tax from April 2027:
   <a href="https://www.legislation.gov.uk/ukpga/2026/11/contents">Finance Act 2026</a> (Part 2, sections 66–71),
   HMRC policy paper
