@@ -117,8 +117,10 @@ file, verify before relying on anything.
 ## Known limitations
 
 The historical-bootstrap engine in `engine/returns.py` currently runs on a
-**synthetic** market series, not real data — free, redistributable long-run UK
-return data is a licensing problem, not a coding one. This is documented at
+**synthetic** market series, not real market data — free, redistributable
+long-run UK *return* data is a licensing problem, not a coding one. (Real ONS
+data *is* bundled, in `engine/ons_data.py`, but it sources the inflation and
+State Pension assumptions — it is not a return series.) This is documented at
 length in [docs/DATA-SOURCING.md](docs/DATA-SOURCING.md) and flagged loudly in
 the code. The browser tool does not use it; it uses the FCA projection rates.
 
@@ -145,4 +147,15 @@ also built by Kevin with Claude.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). That covers the **code**.
+
+The only third-party data in this repository is in `engine/ons_data.py`: three
+Office for National Statistics series used to source the inflation and State
+Pension assumptions. **Contains public sector information licensed under the
+[Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)**,
+which permits commercial use, redistribution and adaptation with attribution —
+so it sits alongside MIT without conflict.
+
+**No Bank of England or Jordà-Schularick-Taylor data is bundled, and none should
+be.** Both are non-commercial, which MIT cannot sublicense. See
+[docs/DATA-SOURCING.md](docs/DATA-SOURCING.md) §I.
