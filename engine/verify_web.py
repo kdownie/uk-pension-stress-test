@@ -606,6 +606,108 @@ async def main():
                        "single-person only",
                        "JS: couple ordering not explicitly refused")
 
+        # ==================================================================
+        # F9. THE SOURCED POLICY ASSUMPTIONS (38) — ONS figures on the page
+        #
+        # No engine change here: this is presentation and disclosure. What
+        # matters is that the numbers printed beside the sliders are the ones
+        # verify.py section I recomputes from the ONS series, and that the
+        # DEFAULTS did not move.
+        # ==================================================================
+        print("\nF9. THE SOURCED POLICY ASSUMPTIONS")
+        print("=" * 86)
+
+        import ons_data as _O
+        _pub = pathlib.Path(__file__).resolve().parent.parent / "public"
+        _idx = (_pub / "index.html").read_text(encoding="utf-8")
+        _fnd = (_pub / "findings.html").read_text(encoding="utf-8")
+
+        # F9a. The observed maximum must be REACHABLE on the slider. Asserting
+        # the attribute equals 10 would pass for the wrong reason if the CPI
+        # series were revised; assert against the data instead.
+        _mx = await pg.evaluate(
+            "() => parseFloat(document.getElementById('freezeInfl').max)")
+        _obs = max(_O.CPI_ANNUAL_RATE[y] for y in range(1993, 2026))
+        ok = _mx >= _obs
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'slider reaches the observed CPI maximum':<52}"
+              f"max {_mx:g}% >= {_obs:g}% (2022)")
+        if not ok:
+            fails.append("freezeInfl slider cannot reach the observed CPI maximum")
+
+        # F9b. THE DEFAULTS MUST NOT HAVE MOVED. This is what keeps the
+        # published 35% standing, and it is the check that would catch someone
+        # "helpfully" defaulting the State Pension to the measured 1.3%.
+        _d = await pg.evaluate(
+            "() => ({fi: document.getElementById('freezeInfl').value,"
+            " sp: document.getElementById('spGrowth').value})")
+        ok = _d["fi"] == "3" and _d["sp"] == "0"
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'defaults unmoved — freezeInfl 3%, spGrowth 0%':<52}"
+              f"{_d['fi']}% / {_d['sp']}%")
+        if not ok:
+            fails.append(f"policy defaults moved: {_d}")
+
+        # F9c. The figures quoted beside the sliders are the computed ones.
+        for _needle, _what in (("9.1", "2022 CPI peak"),
+                               ("2.5% a year", "1993-2025 CPI mean"),
+                               ("D7G7", "the CPI series is named"),
+                               ("1.3&ndash;1.4% a year", "the triple lock figure"),
+                               ("median 1.6%", "and its median")):
+            ok = _needle in _idx
+            print(f"  {'PASS' if ok else 'FAIL'}  {'index.html quotes ' + _what:<52}"
+                  f"{'present' if ok else 'MISSING'}")
+            if not ok:
+                fails.append(f"index.html missing {_what}")
+
+        # F9d. 10f MECHANISED. The triple-lock figure appears on two pages. The
+        # standing rule is that a claim stated twice should be stated once and
+        # referenced — where that is not possible across two static files, a
+        # test has to hold them together. 21e is four instances of exactly this
+        # going wrong.
+        ok = ("1.3&ndash;1.4% a year" in _idx
+              and "1.3&ndash;1.4% a year in real terms" in _fnd)
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'the figure agrees across index and findings':<52}"
+              f"{'both' if ok else 'DIVERGED'}")
+        if not ok:
+            fails.append("triple-lock figure differs between the two pages")
+
+        ok = "findings.html#s10" in _idx and 'id="s10"' in _fnd
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'and index.html links to the working':<52}"
+              f"{'linked' if ok else 'BROKEN ANCHOR'}")
+        if not ok:
+            fails.append("index.html link to findings section 10 is broken")
+
+        # F9e. The Open Government Licence attribution is a CONDITION of using
+        # the data, not a nicety. It must be on the page that publishes it.
+        ok = ("Open Government Licence" in _fnd and "D7G7" in _fnd
+              and "KAB9" in _fnd)
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'findings.html carries the OGL attribution':<52}"
+              f"{'present' if ok else 'MISSING'}")
+        if not ok:
+            fails.append("OGL attribution missing from findings.html")
+
+        # F9f. A template placeholder left in STATIC html renders literally as
+        # "${RULES.src...}" to the reader. Added because it happened while
+        # writing this section: the hints live outside <script>, and the first
+        # draft pasted a ${...} into one.
+        _strays = await pg.evaluate("""() => {
+            const out = [];
+            document.querySelectorAll('p,li,span,td,caption,h1,h2,h3').forEach(el => {
+              if (/\$\{/.test(el.textContent)) out.push(el.textContent.slice(0,60));
+            });
+            return out;
+        }""")
+        ok = not _strays
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'no unrendered ${...} placeholders on the page':<52}"
+              f"{'clean' if ok else _strays[:2]}")
+        if not ok:
+            fails.append(f"unrendered template placeholder on the page: {_strays[:2]}")
+
         print("\nG. PAGE HEALTH")
         print("=" * 86)
         for sel, label in [("#s_succ", "success rate"), ("#s_safe", "safe income"),

@@ -323,6 +323,81 @@ if not _h7_ok:
 print(f"{PASS if _h7_ok else FAIL}  lifetime tax is reported on a depleting "
       f"path too  (£{_dep.tax_paid[0]:,.0f} to age {_dep.depleted_age[0]:.0f})")
 
+# ==========================================================================
+# I. THE PUBLISHED ONS FIGURES  (findings.html section 10, index.html hints)
+#
+# findings.html says "every figure on this page comes out of code that anyone
+# can run". Section 10 publishes figures, so this section is what keeps that
+# sentence true. Every number asserted here appears on a public page.
+# ==========================================================================
+print("\nI. THE PUBLISHED ONS FIGURES")
+print("=" * 92)
+
+import statistics as _st
+import ons_data as O
+
+# I1. The headline: the triple lock's real value, both constructions. The page
+# publishes a RANGE (1.3-1.4%) rather than one number, precisely because the
+# choice of price index is a real modelling decision. Assert the range is
+# honest — that it brackets both methods rather than being picked from one.
+_lockA = list(O.triple_lock_real_uprating("A").values())
+_lockB = list(O.triple_lock_real_uprating("B").values())
+_mA, _mB = _st.mean(_lockA), _st.mean(_lockB)
+_i1_ok = (1.30 <= round(_mA, 2) <= 1.40 and 1.30 <= round(_mB, 2) <= 1.45
+          and abs(_mA - _mB) < 0.10)
+if not _i1_ok:
+    _failures.append("published triple-lock range no longer brackets both methods")
+print(f"{PASS if _i1_ok else FAIL}  triple lock real uprating: A {_mA:.2f}%/yr, "
+      f"B {_mB:.2f}%/yr, spread {abs(_mA-_mB):.2f}pp")
+print(f"        page publishes '1.3-1.4% a year' — brackets both, as it must")
+
+# I2. The medians agree EXACTLY. That is the strongest single statement on the
+# page: the answer does not depend on which price index is used.
+_medA, _medB = _st.median(_lockA), _st.median(_lockB)
+_i2_ok = abs(_medA - _medB) < 1e-9 and abs(_medA - 1.60) < 0.005
+if not _i2_ok:
+    _failures.append("medians no longer agree at 1.60%")
+print(f"{PASS if _i2_ok else FAIL}  medians agree exactly: A {_medA:.2f}%, "
+      f"B {_medB:.2f}%  (page says 1.6%)")
+
+# I3. Which leg bound — the counterintuitive half of the finding.
+_legs = O.binding_leg("B")
+_i3_ok = (_legs["earnings"] == 12 and _legs["prices"] == 8
+          and _legs["floor"] == 5)
+if not _i3_ok:
+    _failures.append(f"binding-leg counts moved: {_legs}")
+print(f"{PASS if _i3_ok else FAIL}  binding leg — earnings {_legs['earnings']}, "
+      f"prices {_legs['prices']}, 2.5% floor {_legs['floor']}  (page says 12/8/5)")
+
+# I4. The inflation figures quoted beside the slider.
+_cpi_era = [O.CPI_ANNUAL_RATE[y] for y in range(1993, 2026)]
+_i4_ok = (abs(round(_st.mean(_cpi_era), 1) - 2.5) < 0.001
+          and max(_cpi_era) == 9.1 and min(_cpi_era) == 0.0
+          and O.CPI_ANNUAL_RATE[2022] == 9.1 and O.CPI_ANNUAL_RATE[2015] == 0.0)
+if not _i4_ok:
+    _failures.append("CPI figures quoted on the page do not match the series")
+print(f"{PASS if _i4_ok else FAIL}  CPI 1993-2025: mean {_st.mean(_cpi_era):.2f}%, "
+      f"range {min(_cpi_era):.1f}%-{max(_cpi_era):.1f}%  (page says 2.5%, 0.0-9.1)")
+
+# I5. THE REASON THE MILLENNIUM DATASET IS NOT USED, asserted so that a future
+# session cannot quietly revert to it without this test explaining why not.
+# That dataset ends in 2016; the inflation assumption depends most on 2022.
+_pre2016 = [O.CPI_ANNUAL_RATE[y] for y in range(1993, 2017)]
+_i5_ok = max(_pre2016) == 4.5 and max(_cpi_era) == 9.1
+if not _i5_ok:
+    _failures.append("the 2016-cutoff argument no longer holds")
+print(f"{PASS if _i5_ok else FAIL}  data ending 2016 would cap the range at "
+      f"{max(_pre2016):.1f}% and miss 2022's {O.CPI_ANNUAL_RATE[2022]:.1f}%")
+
+# I6. The lock can never deliver NEGATIVE real growth — it is a max() against
+# prices. So the slider's negative half means something different from its
+# positive half, and that is a claim the page makes.
+_i6_ok = min(_lockA) >= 0.0 and min(_lockB) >= 0.0
+if not _i6_ok:
+    _failures.append("triple lock produced negative real uprating — impossible")
+print(f"{PASS if _i6_ok else FAIL}  the lock never delivers negative real growth "
+      f"(min {min(_lockB):.2f}%) — it is a max() against prices")
+
 print("\n" + "=" * 92)
 if _failures:
     print(f"FAILED {len(_failures)} check(s): " + "; ".join(_failures))
