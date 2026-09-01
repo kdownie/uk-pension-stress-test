@@ -5,7 +5,7 @@ the Python engine that verify.py already validates.
 Two independent implementations of the same rules is only useful if they are
 actually checked against each other — otherwise it is two chances to be wrong.
 """
-import asyncio, json, pathlib
+import asyncio, json, pathlib, re, dataclasses, inspect
 from playwright.async_api import async_playwright
 
 # Resolve index.html relative to this file so the check runs anywhere the
@@ -14,6 +14,10 @@ PAGE = (pathlib.Path(__file__).resolve().parent.parent / "public" / "index.html"
 
 import uk_rules as R
 from decumulation import Plan, simulate
+# 41a. The return convention is expressed ONCE, in returns.py, and used both
+# by the shipped generator and by this harness — so this file checks the
+# engine rather than checking a formula it wrote out for itself (10f).
+from returns import lognormal_real, standard_normals, FCAPrescribed
 import numpy as np
 
 fails = []
@@ -92,9 +96,8 @@ async def main():
             plan = Plan(pot=500_000, retire_age=60, end_age=95,
                         target_net_income=tgt, state_pension_age=67,
                         state_pension_annual=12_548, take_pcls=True)
-            rng = np.random.default_rng(7)
-            z = rng.standard_normal((20_000, 35)); z = (z - z.mean()) / z.std()
-            rets = np.expm1(np.log1p(0.0294) + 0.15 * z)
+            z = standard_normals(20_000, 35, 7)
+            rets = lognormal_real(0.0294, 0.15, z, "geo")
             pyr = simulate(plan, rets).success_rate
             # Different RNG streams, so agreement is statistical: the standard
             # error on 20k paths is ~0.35pp, so 1.5pp is a generous 4-sigma band.
@@ -165,10 +168,8 @@ async def main():
                                pcls_spent=pcls_spent,
                                dies_at_age=death_age)],
                 target_net_income=40_000, survivor_fraction=0.67, end_age=95)
-            rng = np.random.default_rng(7)
-            z = rng.standard_normal((paths, 35))
-            z = (z - z.mean()) / z.std()
-            rets = np.expm1(np.log1p(0.0294) + vol * z)
+            z = standard_normals(paths, 35, 7)
+            rets = lognormal_real(0.0294, vol, z, "geo")
             return simulate_household(hh, rets)
 
         def _js_cfg(death_age, pcls_spend=False, vol=0.15, paths=20_000):
@@ -707,6 +708,192 @@ async def main():
               f"{'clean' if ok else _strays[:2]}")
         if not ok:
             fails.append(f"unrendered template placeholder on the page: {_strays[:2]}")
+
+        print("\nF10. THE RETURN CONVENTION — GEOMETRIC vs ARITHMETIC (41a)")
+        print("=" * 86)
+        # Until 1 September 2026 `conv` was a JS-ONLY parameter. The browser
+        # carried both branches; the Python engine carried neither; and all
+        # seven conv= call sites in this file passed "geo". So the ARITHMETIC
+        # branch of the shipped calculator was cross-checked against nothing,
+        # for as long as it has been live. 10b, and 10c in the direction 31's
+        # literal audit never swept — a parameter the JS can express and the
+        # Python cannot.
+        #
+        # THIS SECTION MUST NOT BE RUN AT vol=0. The two conventions are
+        # identical by construction there, so a zero-volatility version of it
+        # would pass with `conv` ignored entirely (10h). F10a states that
+        # coincidence separately, and labels it, so it cannot be mistaken for
+        # the test.
+        _cv_cfg = dict(pot=500_000, retire=60, end=95, target=30_000,
+                       sp=12_548, spAge=67, other=0, takePcls=True,
+                       pclsSpend=False, real=0.0294, vol=0.15, freeze=0,
+                       paths=20_000, couple=False, region="ruk", pot2=0,
+                       retire2=0, sp2=0, spAge2=200, other2=0, deathAge=0,
+                       survFrac=0.67)
+        _cv_plan = Plan(pot=500_000, retire_age=60, end_age=95,
+                        target_net_income=30_000, state_pension_age=67,
+                        state_pension_annual=12_548, take_pcls=True)
+        _cv_z = standard_normals(20_000, 35, 7)
+
+        _js_s, _py_s = {}, {}
+        for _c in ("geo", "ari"):
+            _js_s[_c] = await pg.evaluate(
+                "cfg => simulate(cfg).successRate", dict(_cv_cfg, conv=_c)) * 100
+            _py_s[_c] = simulate(
+                _cv_plan, lognormal_real(0.0294, 0.15, _cv_z, _c)).success_rate * 100
+            chk(f"success rate at conv={_c!r} (±1.5pp MC)", _js_s[_c], _py_s[_c], 1.5)
+
+        # F10a. THE DEGENERATE CASE, named so it cannot be mistaken for a test.
+        # At vol=0 the conventions coincide. Checked on a CLOSING BALANCE with
+        # a pot that cannot deplete, not on a success rate — at zero volatility
+        # every path is the same path, so the success rate is 0% or 100% and a
+        # comparison of two censored values is not a comparison (10d).
+        _flat = dict(_cv_cfg, vol=0.0, pot=2_000_000, paths=200)
+        _fb = {}
+        for _c in ("geo", "ari"):
+            _fb[_c] = await pg.evaluate(
+                "cfg => { const r = simulate(cfg); return r.bal[(r.years+1)-1]; }",
+                dict(_flat, conv=_c))
+        _unc = _fb["geo"] > 1_000.0 and _fb["ari"] > 1_000.0
+        if not _unc:
+            fails.append("F10a ran on a depleted pot — result is censored")
+        print(f"  {'PASS' if _unc else 'FAIL'}  "
+              f"{'F10a case is uncensored (pot never depletes)':<50} "
+              f"£{min(_fb.values()):>13,.0f}")
+        chk("vol=0: conventions coincide (DEGENERATE, not a test)",
+            _fb["geo"], _fb["ari"], 0.01)
+
+        # F10b. EFFECT ASSERTIONS (10b). The rows above compare two engines;
+        # they do NOT establish that either engine READS the parameter. An
+        # engine that ignored `conv` would agree perfectly with another engine
+        # that ignored `conv` — which is 20a exactly, two implementations of
+        # one mistake reported as agreement. So assert the effect separately
+        # in each engine.
+        #
+        # The measured gap is ~12.4pp (41a, five seeds, sd 0.08pp). The 8.0pp
+        # threshold is deliberately far below it and far above zero: it fails
+        # loudly if either engine stops reading `conv`, and does not tighten
+        # into a flaky test as the Monte Carlo noise moves.
+        for _eng, _d in (("JS", _js_s), ("Python", _py_s)):
+            _eff = _d["geo"] - _d["ari"]
+            ok = _eff > 8.0
+            if not ok:
+                fails.append(f"conv has no effect in the {_eng} engine")
+            print(f"  {'PASS' if ok else 'FAIL'}  "
+                  f"{'conv CHANGES the answer in ' + _eng:<50} "
+                  f"{_eff:>10.2f} pp")
+        chk("both engines agree on the SIZE of the effect",
+            _js_s["geo"] - _js_s["ari"], _py_s["geo"] - _py_s["ari"], 1.5)
+
+        # F10c. 37g: the uncensored check is built INTO the script rather than
+        # remembered. 41's own first measurement compared 0.000% with 0.000%
+        # and looked exactly like a pass.
+        for _eng, _d in (("js", _js_s), ("py", _py_s)):
+            for _c in ("geo", "ari"):
+                ok = 0.5 < _d[_c] < 99.5
+                if not ok:
+                    fails.append(f"F10 {_eng} conv={_c} is at a bound ({_d[_c]:.2f}%)")
+                print(f"  {'PASS' if ok else 'FAIL'}  "
+                      f"{f'{_eng} conv={_c!r} is strictly inside (0,100)':<50} "
+                      f"{_d[_c]:>10.2f} %")
+
+        # F10d. A MISTYPED convention must raise, not quietly run geometric —
+        # a silent fallback is an output the caller believes is one thing and
+        # is another (10b). Asserted on the MESSAGE, not merely on the fact
+        # that something was raised (10h).
+        try:
+            lognormal_real(0.0294, 0.15, _cv_z, "arithmetic")
+            ok, _msg = False, "no exception"
+        except ValueError as _e:
+            _msg = str(_e)
+            ok = "conv must be one of" in _msg
+        if not ok:
+            fails.append(f"unknown conv not refused properly: {_msg}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'an unknown convention is REFUSED':<50} {_msg[:28]!r}")
+
+        print("\nF11. THE 10c AUDIT — AUTOMATED, AND IN BOTH DIRECTIONS (41a)")
+        print("=" * 86)
+        # 31 ran this audit BY HAND, in ONE direction — "grep for literals in
+        # the JS that exist as named parameters in the Python" — and recorded
+        # the result as "bounded at one". 41a was in the other direction, so
+        # that grep could not have found it however carefully it was run.
+        #
+        # 37g's lesson is that a check you have to remember to run is a check
+        # that does not exist. So both directions are built into the suite
+        # here, and a new parameter on either side fails until someone records
+        # where its counterpart lives — or records that it deliberately has
+        # none.
+        JS_TO_PY = {
+            "pot": "Plan.pot / Person.pot",
+            "pot2": "Person.pot",
+            "retire": "Plan.retire_age / Person.age",
+            "retire2": "Person.age",
+            "end": "Plan.end_age / Household.end_age",
+            "target": "Plan.target_net_income / Household.target_net_income",
+            "sp": "Plan.state_pension_annual / Person.state_pension",
+            "sp2": "Person.state_pension",
+            "spAge": "Plan.state_pension_age / Person.sp_age",
+            "spAge2": "Person.sp_age",
+            "spGrowth": "Plan.sp_real_growth / Household.sp_real_growth",
+            "other": "Plan.other_taxable_income / Person.other_income",
+            "other2": "Person.other_income",
+            "couple": "module choice: decumulation.simulate vs household.simulate_household",
+            "deathAge": "Person.dies_at_age",
+            "survFrac": "Household.survivor_fraction",
+            "region": "Plan.region / Household.region",
+            "freeze": "Plan.band_freeze_years / Household.band_freeze_years",
+            "freezeInfl": "Plan.assumed_inflation / Household.assumed_inflation",
+            "takePcls": "Plan.take_pcls / Person.take_pcls",
+            "pclsSpend": "Plan.pcls_spent_immediately / Person.pcls_spent",
+            "pclsHeld": "Plan.pcls_held_as / Household.pcls_held_as",
+            "pclsCashReal": "Plan.pcls_cash_real / Household.pcls_cash_real",
+            "isa": "Plan.isa / Household.isa",
+            "isaHeld": "Plan.isa_held_as / Household.isa_held_as",
+            "isaReal": "Plan.isa_real / Household.isa_real",
+            "order": "Plan.withdrawal_order",
+            "real": "FCAPrescribed.real / lognormal_real(real=...)",
+            "vol": "FCAPrescribed.vol / lognormal_real(vol=...)",
+            "conv": "FCAPrescribed.conv / lognormal_real(conv=...)  <- 41a, the gap this audit missed",
+            "scen": "FCAPrescribed.scenario (resolved into P.real before simulate reads it)",
+            "paths": "the n_paths dimension of the returns array",
+        }
+        # Deliberate one-sided parameters, each with the section that decided it.
+        PY_ONLY = {
+            "exact_gross_up": "37a — the JS ships the linear `frac` form; ~0.1pp, documented choice",
+            "inflation_scenario": "31 — the JS pins FCA.inflation to 2% on purpose, index.html:544",
+        }
+
+        _src = pathlib.Path(PAGE.replace("file://", "")).read_text()
+        _js_fields = set(re.findall(r"P\.([A-Za-z0-9_]+)", _src))
+        _unmapped = sorted(_js_fields - set(JS_TO_PY))
+        ok = not _unmapped
+        if not ok:
+            fails.append(f"JS parameter(s) with no recorded Python home: {_unmapped}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'every JS engine parameter has a Python home':<50} "
+              f"{len(_js_fields)} fields, {len(_unmapped)} unmapped")
+        if _unmapped:
+            print(f"        UNMAPPED: {_unmapped}")
+
+        _py_fields = {f.name for f in dataclasses.fields(Plan)}
+        _py_fields |= set(inspect.signature(FCAPrescribed.__init__).parameters) - {"self"}
+        # A Python parameter counts as covered if its name appears anywhere in
+        # the map's values — deliberately crude, because the map is the record
+        # and the point is to notice a NEW name, not to parse the old ones.
+        _blob = " ".join(JS_TO_PY.values())
+        _py_unmapped = sorted(f for f in _py_fields
+                              if f not in _blob and f not in PY_ONLY)
+        ok = not _py_unmapped
+        if not ok:
+            fails.append(f"Python parameter(s) the JS cannot express, unrecorded: {_py_unmapped}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'every Python parameter is mirrored or recorded':<50} "
+              f"{len(_py_fields)} fields, {len(_py_unmapped)} unrecorded")
+        if _py_unmapped:
+            print(f"        UNRECORDED: {_py_unmapped}")
+        for _k, _why in PY_ONLY.items():
+            print(f"        one-sided BY DECISION: {_k} — {_why}")
 
         print("\nG. PAGE HEALTH")
         print("=" * 86)

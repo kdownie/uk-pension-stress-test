@@ -105,6 +105,76 @@ def load_history(seed: int = 20260815) -> tuple[np.ndarray, np.ndarray]:
 
 
 # --------------------------------------------------------------------------
+# The return CONVENTION — the one place this formula is written
+# --------------------------------------------------------------------------
+#
+# "5% expected return" is ambiguous, and at the shipped defaults the ambiguity
+# is worth 12.3pp of success rate (41a, measured 1 September 2026).
+#
+#   "geo"  the figure is the GEOMETRIC mean — what the pot actually compounds
+#          at. Volatility then costs the compound return nothing, because the
+#          median growth rate is pinned to the user's own number.
+#   "ari"  the figure is the ARITHMETIC mean — the average of the yearly
+#          returns. Variance drag then eats sigma^2/2 of it: at vol 15% that
+#          is 1.125pp of return a year.
+#
+# This has existed in the browser since the calculator shipped
+# (public/index.html:774) and did NOT exist here until 1 September 2026, so
+# the arithmetic branch of the shipped calculator was cross-checked against
+# nothing for as long as it has been live. That is 10b and 10c with the
+# engines swapped — a parameter the JS can express and the Python cannot —
+# and 31's literal audit could not have found it, because it only swept in
+# the other direction (JS literal -> Python parameter). Sweep both ways.
+#
+# Written ONCE here and referenced from FCAPrescribed.sample and from
+# verify_web.py, rather than restated in each (10f).
+
+CONVENTIONS = ("geo", "ari")
+
+
+def standard_normals(n_paths: int, n_years: int,
+                     seed: int | None = None) -> np.ndarray:
+    """Standard normals with the sampling error in the mean removed.
+
+    MIRRORS normals() in public/index.html, which standardises over the whole
+    flattened draw of N*years values rather than per year — so this does the
+    same, over the whole matrix. The two engines run different RNG streams, so
+    this is what makes their answers comparable to a fraction of a point
+    instead of to the ~0.35pp standard error of 20,000 raw paths.
+    """
+    rng = np.random.default_rng(seed)
+    z = rng.standard_normal((n_paths, n_years))
+    return (z - z.mean()) / z.std()
+
+
+def lognormal_real(real: float, vol: float, z: np.ndarray,
+                   conv: str = "geo") -> np.ndarray:
+    """Annual REAL returns from standardised normals, under a stated convention.
+
+    MIRRORS public/index.html:774 exactly:
+
+        const mu = Math.log1p(P.real) - (P.conv==="ari" ? .5*P.vol*P.vol : 0);
+        ...  expm1(mu + vol*z)
+
+    log1p/expm1 rather than log/exp is not decoration: the sloppier
+    exp(r) - 1 form proposed in 41 was measured at 0.044pp of success rate at
+    the default settings, in the wrong direction.
+
+    `conv` is VALIDATED here, even though the browser silently treats anything
+    that is not "ari" as geometric. The asymmetry is deliberate. The browser
+    reads this from a two-option <select> and cannot be handed a typo; every
+    caller on this side builds its config BY HAND, which is exactly how 41a
+    stayed invisible — nine hand-written call sites, every one of them
+    "geo". A mistyped convention must raise, not quietly run the other branch
+    (10h: an assertion that the excluded failure mode can also satisfy is not
+    an assertion).
+    """
+    if conv not in CONVENTIONS:
+        raise ValueError(f"conv must be one of {CONVENTIONS}, got {conv!r}")
+    mu = np.log1p(real) - (0.5 * vol * vol if conv == "ari" else 0.0)
+    return np.expm1(mu + vol * z)
+
+# --------------------------------------------------------------------------
 # Engine 1 — historical block bootstrap (the default)
 # --------------------------------------------------------------------------
 
@@ -278,24 +348,32 @@ class FCAPrescribed:
               "(prescribed inflation), checked 2026-08-20")
 
     def __init__(self, scenario: str = "centre", vol: float = 0.15,
-                 inflation_scenario: str = "centre"):
+                 inflation_scenario: str = "centre", conv: str = "geo"):
         if scenario not in self.NOMINAL:
             raise ValueError(f"scenario must be one of {list(self.NOMINAL)}")
+        # 41a. Default "geo" reproduces every figure this engine produced
+        # before 1 September 2026 exactly — the og card and verify_household
+        # both construct it without naming a convention. Validated at
+        # CONSTRUCTION as well as at sample(), so a typo fails on the line
+        # that contains it rather than several calls later.
+        if conv not in CONVENTIONS:
+            raise ValueError(f"conv must be one of {CONVENTIONS}, got {conv!r}")
         self.scenario = scenario
+        self.conv = conv
         self.vol = float(vol)
         self.nominal = self.NOMINAL[scenario]
         self.inflation = self.INFLATION[inflation_scenario]
         self.real = (1 + self.nominal) / (1 + self.inflation) - 1
 
     def sample(self, n_paths: int, n_years: int, seed: int | None = None):
-        rng = np.random.default_rng(seed)
-        # Lognormal with the geometric mean pinned to self.real, so the
-        # user's stated assumption is what the pot actually compounds at
-        # rather than an arithmetic mean that quietly overshoots it.
-        mu = np.log1p(self.real)
-        z = rng.standard_normal((n_paths, n_years))
-        z = (z - z.mean()) / z.std()          # remove sampling error in the mean
-        return np.expm1(mu + self.vol * z)
+        # Lognormal. Under the default "geo" convention the GEOMETRIC mean is
+        # pinned to self.real, so the user's stated assumption is what the pot
+        # actually compounds at rather than an arithmetic mean that quietly
+        # overshoots it. Under "ari" the stated figure is the arithmetic mean
+        # and variance drag is taken off it — see lognormal_real, which is the
+        # same expression the browser evaluates.
+        z = standard_normals(n_paths, n_years, seed)
+        return lognormal_real(self.real, self.vol, z, self.conv)
 
     def scenarios(self, n_years: int):
         """The three deterministic FCA projections, real terms."""
@@ -308,5 +386,7 @@ class FCAPrescribed:
     def describe(self):
         return (f"{self.name}: {self.scenario} scenario, {self.nominal:.0%} "
                 f"nominal less {self.inflation:.0%} inflation = "
-                f"{self.real:+.2%} real; vol {self.vol:.0%} "
+                f"{self.real:+.2%} real, treated as "
+                f"{'a geometric' if self.conv == 'geo' else 'an arithmetic'} mean; "
+                f"vol {self.vol:.0%} "
                 f"(NOT set by the FCA — user assumption). {self.SOURCE}")
