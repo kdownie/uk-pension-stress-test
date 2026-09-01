@@ -431,6 +431,15 @@ footer a{color:var(--s450)}
         volatility lowers the compound return; under the other it does not. The
         two give different answers.</p>
 
+      <label><span class="lbl">Annual charges <span class="val" id="v_fee">0.00%</span></span>
+        <input type="range" id="fee" min="0" max="3" step="0.05" value="0"></label>
+      <p class="hint">Everything taken each year as a percentage of the pot —
+        platform, fund and any adviser charge, combined. It is deducted from the
+        return above, so that figure is the return <b>before</b> charges. It
+        applies only to money that is invested: tax-free cash or an ISA you have
+        set to "cash" does not pay it. The default is 0%, so no charge is
+        assumed on your behalf.</p>
+
       <label><span class="lbl">Tax bands frozen for
         <span class="val" id="v_freeze">0 years</span></span>
         <input type="range" id="freeze" min="0" max="35" step="1" value="0"></label>
@@ -490,9 +499,9 @@ footer a{color:var(--s450)}
   possible — using both personal allowances before either partner reaches a
   higher rate.</p>
   <p><b>What it does not model.</b> Defined benefit pensions and annuities · the
-  money purchase annual allowance · inheritance tax · investment charges · care
-  costs · mortality as a probability rather than a date you pick · anything about
-  your actual circumstances.</p>
+  money purchase annual allowance · inheritance tax · care costs · mortality as a
+  probability rather than a date you pick · anything about your actual
+  circumstances.</p>
   <p>On that third one: for deaths on or after <b>6 April 2027</b>, most unused
   pension funds count as part of the estate for inheritance tax — sections 66 to
   71 of the Finance Act 2026. That date falls inside the first year of every
@@ -771,7 +780,17 @@ function simulate(P){
   seedState = 987654321;
   const N = P.paths;
   const z = normals(N*years);
-  const mu = Math.log1p(P.real) - (P.conv==="ari" ? .5*P.vol*P.vol : 0);
+  // STAGE 41b — annual charges. MULTIPLICATIVE, because a charge is levied on
+  // the POT: the net growth factor is the gross factor times (1-fee), so in
+  // logs it is + log1p(-fee), not - fee. At 1% the two differ by 0.005pp a
+  // year. Mirrors lognormal_real in engine/returns.py; the two must agree.
+  // Applied to the RETURN PATH, so it is charged on the pension and on any
+  // pool held as "invested", and not on pools held as cash. Defaults to 0 for
+  // callers that build a config by hand, which reproduces every figure the
+  // page produced before 1 September 2026 exactly.
+  const fee = (P.fee ?? 0);
+  const mu = Math.log1p(P.real) - (P.conv==="ari" ? .5*P.vol*P.vol : 0)
+             + Math.log1p(-fee);
   const couple = P.couple;
 
   // Everything about tax and splitting depends only on the YEAR, never on the
@@ -1043,6 +1062,7 @@ function readParams(){
     takePcls:$("pcls").checked, pclsSpend:$("pclsSpend").checked,
     pclsHeld:$("pclsHeld").value, pclsCashReal:+$("pclsCash").value/100,
     real, vol:+$("vol").value/100, conv:$("conv").value,
+    fee:+$("fee").value/100,
     isa:+$("isa").value, isaHeld:$("isaHeld").value,
     isaReal:+$("isaReal").value/100,
     freeze:+$("freeze").value, freezeInfl:+$("freezeInfl").value/100,
@@ -1265,6 +1285,12 @@ function assumptionsBlock(P,r){
   <p><b>Return.</b> ${scenTxt}, giving <b>${(P.real*100).toFixed(2)}% a year after
   inflation</b>, treated as a <b>${P.conv==="geo"?"geometric":"arithmetic"} mean</b>,
   with volatility of ${(P.vol*100).toFixed(0)}% — a figure no regulator sets.
+  ${P.fee > 0
+    ? `Charges of <b>${(P.fee*100).toFixed(2)}% a year</b> are deducted from that
+       return, on invested money only, leaving <b>${((Math.expm1(Math.log1p(P.real)
+       + Math.log1p(-P.fee)))*100).toFixed(2)}% a year</b> after charges.`
+    : `<b>No charges are deducted</b> — the figure above is a return before any
+       platform, fund or adviser charge, and the charges control is set to 0%.`}
   The 2/5/8% figures are Handbook <b>maximums</b> for the three cases, not
   prescribed values; deflating by 2% inflation is the Handbook's own
   construction (COBS 13 Annex 2 1.2R). <a href="${RULES.src.fca}">FCA Handbook
@@ -1334,6 +1360,7 @@ function run(){
   $("v_vol").textContent=(P.vol*100).toFixed(0)+"%"; $("v_pclscash").textContent=(P.pclsCashReal*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_freeze").textContent=P.freeze+(P.freeze===1?" year":" years");
   $("v_isareal").textContent=(P.isaReal*100).toFixed(2).replace(/\.?0+$/,"")+"%";
+  $("v_fee").textContent=(P.fee*100).toFixed(2)+"%";
   $("v_freezeInfl").textContent=(P.freezeInfl*100).toFixed(2).replace(/\.?0+$/,"")+"%";
   $("v_spGrowth").textContent=(P.spGrowth*100).toFixed(1).replace(/\.0$/,"")+"%";
   $("v_paths").textContent=P.paths.toLocaleString("en-GB");

@@ -202,6 +202,12 @@ the more it eats. This is not an obscure effect. Push volatility to 25% and a
 stated 2.94% real return compounds at <strong>&minus;0.23%</strong>. The number
 on the page has not changed. The money is gone.</p>
 
+<p>At the settings this calculator loads with, that single word is worth
+<strong>12.3 percentage points</strong> of the headline: the same scenario funds
+the full income in 35.7% of runs reading the return as a geometric mean and
+23.4% reading it as an arithmetic one. It is the second-largest row in the table
+in §3, and it is a choice most calculators never present, let alone measure.</p>
+
 <p>The FCA's projection rates in COBS 13 Annex 2 are maximum rates set for a
 single-path, deterministic projection: a rate compounded annually, with no
 distribution around it. Nothing in the rules says what to do with that number
@@ -246,8 +252,11 @@ and the single seed the front page uses reports 35%.</p>
   <thead><tr><th>Change</th><th class="n">Effect</th></tr></thead>
   <tbody>
     <tr><td>Tax-free cash spent elsewhere rather than funding income</td><td class="n"><span class="big">&minus;24.8 pp</span></td></tr>
+    <tr><td>Annual charges of 1.50% rather than none</td><td class="n"><span class="big">&minus;15.9 pp</span></td></tr>
+    <tr><td>The return figure read as an arithmetic rather than a geometric mean</td><td class="n">&minus;12.3 pp</td></tr>
     <tr><td>Real return assumption +1% a year</td><td class="n">+11.9 pp</td></tr>
     <tr><td>Real return assumption &minus;1% a year</td><td class="n">&minus;10.7 pp</td></tr>
+    <tr><td>Annual charges of 0.75% rather than none</td><td class="n">&minus;8.5 pp</td></tr>
     <tr><td>Retiring at 62 instead of 60</td><td class="n">+7.5 pp</td></tr>
     <tr><td>Tax bands frozen for 20 years</td><td class="n">&minus;6.6 pp</td></tr>
     <tr><td>State Pension at 80% of full, from a partial NI record</td><td class="n">&minus;6.3 pp</td></tr>
@@ -271,9 +280,19 @@ turbulence largely washes out once it is compounded into annual returns. Matched
 on return and volatility, the two engines never disagreed by more than about
 three points anywhere on the withdrawal curve.</p>
 
-<p>Three of the seven rows are specific to UK policy: the band freeze, the
+<p>Three of the ten rows are specific to UK policy: the band freeze, the
 National Insurance record, and the treatment of the lump sum. We are not aware
 of a free calculator that models any of them.</p>
+
+<p>Two of the rows are about charges, and they are worth reading together.
+Paying 0.75% a year costs <strong>more than retiring two years later gains</strong>.
+Paying 1.50% costs more than every other row here except spending the tax-free
+cash. Charges are modelled as exactly what they are — a deduction from the
+return — so it is no discovery that they behave like a lower return. What the
+table adds is the size of it in outcome terms, next to the decisions people
+actually spend their time on. The calculator ships with the charge set to
+<strong>zero</strong>, so every figure elsewhere on this page is before charges;
+the control is on the page and the figure that belongs in it is your own.</p>
 
 <h2><span class="num">4</span>The tax-free cash decision is the largest single choice on the page</h2>
 
@@ -471,8 +490,12 @@ wrong.</p>
   <li>No National Insurance (correct for pension income, wrong the moment earned
     income is added), no money purchase annual allowance, no defined benefit
     pensions or annuities, <strong>no inheritance tax</strong> (§9 — the rules
-    change on a date inside every projection here), no investment charges, no
-    care costs, and no ISAs or other wrappers yet.</li>
+    change on a date inside every projection here), and no care costs.</li>
+  <li><strong>Charges and ISAs are modelled, and this page said otherwise for
+    longer than it should have.</strong> An ISA as a starting asset was added on
+    26 August and this list was not updated until 1 September; annual charges
+    were added on 1 September. Both are controls on the calculator now. Unwrapped
+    holdings outside a pension or an ISA are still not modelled.</li>
   <li>Mortality is a date you pick, not a probability.</li>
   <li>The State Pension defaults to the full new State Pension, which assumes a
     complete National Insurance record. Many people get less. An actual forecast
