@@ -148,12 +148,14 @@ def standard_normals(n_paths: int, n_years: int,
 
 
 def lognormal_real(real: float, vol: float, z: np.ndarray,
-                   conv: str = "geo") -> np.ndarray:
-    """Annual REAL returns from standardised normals, under a stated convention.
+                   conv: str = "geo", fee: float = 0.0) -> np.ndarray:
+    """Annual REAL returns from standardised normals, net of an annual charge.
 
     MIRRORS public/index.html:774 exactly:
 
-        const mu = Math.log1p(P.real) - (P.conv==="ari" ? .5*P.vol*P.vol : 0);
+        const mu = Math.log1p(P.real)
+                 - (P.conv==="ari" ? .5*P.vol*P.vol : 0)
+                 + Math.log1p(-fee);
         ...  expm1(mu + vol*z)
 
     log1p/expm1 rather than log/exp is not decoration: the sloppier
@@ -164,14 +166,40 @@ def lognormal_real(real: float, vol: float, z: np.ndarray,
     that is not "ari" as geometric. The asymmetry is deliberate. The browser
     reads this from a two-option <select> and cannot be handed a typo; every
     caller on this side builds its config BY HAND, which is exactly how 41a
-    stayed invisible — nine hand-written call sites, every one of them
+    stayed invisible — seven hand-written call sites, every one of them
     "geo". A mistyped convention must raise, not quietly run the other branch
     (10h: an assertion that the excluded failure mode can also satisfy is not
     an assertion).
+
+    > CORRECTED 2026-09-01: 41 and the first draft of this docstring both said
+    > "nine" call sites. `grep -c "conv=" verify_web.py` says seven. Nobody
+    > counted; the number was carried from a sentence into a docstring without
+    > anyone running the grep it describes. 10g — recorded, not deleted.
+
+    THE FEE (41b) is multiplicative, because a charge is levied on the POT:
+    the net growth factor is the gross factor times (1 - fee), so in logs it is
+    `mu + log1p(-fee)`, not `mu - fee`. At 1% the two differ by 0.005pp a year
+    — negligible, free to get right, and this project's currency is exactness.
+
+    It is applied to the RETURN PATH, which means it is charged on every pool
+    that rides that path — the pension, and retained tax-free cash or an ISA
+    held as "invested" — and NOT on pools held as cash, which earn their own
+    stated rate. That is the correct treatment (nobody pays a platform charge
+    on a bank account) and it falls out of applying the fee here rather than
+    inside the withdrawal loop, which is also what keeps fees out of the
+    gross-up maths entirely.
+
+    The stated return is therefore BEFORE charges, and the page says so.
     """
     if conv not in CONVENTIONS:
         raise ValueError(f"conv must be one of {CONVENTIONS}, got {conv!r}")
-    mu = np.log1p(real) - (0.5 * vol * vol if conv == "ari" else 0.0)
+    # A fee of 1.0 is log1p(-1) = -inf, and anything above it is a NaN that
+    # would propagate silently through every path. Refuse both by name.
+    if not (0.0 <= fee < 1.0):
+        raise ValueError(f"fee must be in [0, 1), got {fee!r}")
+    mu = (np.log1p(real)
+          - (0.5 * vol * vol if conv == "ari" else 0.0)
+          + np.log1p(-fee))
     return np.expm1(mu + vol * z)
 
 # --------------------------------------------------------------------------
@@ -348,7 +376,8 @@ class FCAPrescribed:
               "(prescribed inflation), checked 2026-08-20")
 
     def __init__(self, scenario: str = "centre", vol: float = 0.15,
-                 inflation_scenario: str = "centre", conv: str = "geo"):
+                 inflation_scenario: str = "centre", conv: str = "geo",
+                 fee: float = 0.0):
         if scenario not in self.NOMINAL:
             raise ValueError(f"scenario must be one of {list(self.NOMINAL)}")
         # 41a. Default "geo" reproduces every figure this engine produced
@@ -358,8 +387,15 @@ class FCAPrescribed:
         # that contains it rather than several calls later.
         if conv not in CONVENTIONS:
             raise ValueError(f"conv must be one of {CONVENTIONS}, got {conv!r}")
+        # 41b. Default 0.0 reproduces every figure this engine produced before
+        # 1 September 2026 exactly. A non-zero DEFAULT would move the published
+        # headline and cascade across seven files (10f) — so the default is
+        # zero here and on the page, with the control prominent instead.
+        if not (0.0 <= fee < 1.0):
+            raise ValueError(f"fee must be in [0, 1), got {fee!r}")
         self.scenario = scenario
         self.conv = conv
+        self.fee = float(fee)
         self.vol = float(vol)
         self.nominal = self.NOMINAL[scenario]
         self.inflation = self.INFLATION[inflation_scenario]
@@ -373,7 +409,7 @@ class FCAPrescribed:
         # and variance drag is taken off it — see lognormal_real, which is the
         # same expression the browser evaluates.
         z = standard_normals(n_paths, n_years, seed)
-        return lognormal_real(self.real, self.vol, z, self.conv)
+        return lognormal_real(self.real, self.vol, z, self.conv, self.fee)
 
     def scenarios(self, n_years: int):
         """The three deterministic FCA projections, real terms."""

@@ -79,10 +79,15 @@ ASSUMPTIONS = {
 }
 
 LIMITATIONS = [
-    "Only pension-type income is modelled — non-savings, non-dividend. No "
-    "savings interest, no dividends, and so no ISAs, cash savings, Premium "
-    "Bonds or unwrapped holdings. Those carry their own allowances and "
-    "rates and would need a separate income type.",
+    "Only pension-type INCOME is modelled — non-savings, non-dividend. No "
+    "savings interest and no dividends, so cash savings, Premium Bonds and "
+    "unwrapped holdings cannot be represented: they carry their own "
+    "allowances and rates and would need a separate income type. An ISA IS "
+    "modelled, as a starting ASSET (stage D, 26 August 2026) — it produces no "
+    "taxable income, so it needs no income type, which is exactly why it fit. "
+    "CORRECTED 2026-09-01: this line read 'and so no ISAs' for six days after "
+    "stage D shipped. Defensible about income types, false as printed here "
+    "under a NOT MODELLED heading.",
     "No National Insurance — not charged on pension income, so correct here, "
     "but wrong the moment earned income is added.",
     "No MPAA, annual allowance or taper — this is a decumulation model only.",

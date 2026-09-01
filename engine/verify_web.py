@@ -812,6 +812,137 @@ async def main():
         print(f"  {'PASS' if ok else 'FAIL'}  "
               f"{'an unknown convention is REFUSED':<50} {_msg[:28]!r}")
 
+        print("\nF12. ANNUAL CHARGES (41b)")
+        print("=" * 86)
+        # The fee is applied to the DRIFT, not inside the withdrawal loop, so it
+        # never touches the gross-up maths. It is charged on the return path,
+        # which means the pension and any pool held as "invested" pay it and
+        # pools held as cash do not.
+        _fee_base = dict(pot=500_000, retire=60, end=95, target=30_000,
+                         sp=12_548, spAge=67, other=0, takePcls=True,
+                         pclsSpend=False, real=0.0294, vol=0.15, conv="geo",
+                         freeze=0, paths=20_000, couple=False, region="ruk",
+                         pot2=0, retire2=0, sp2=0, spAge2=200, other2=0,
+                         deathAge=0, survFrac=0.67)
+        _fee_plan = Plan(pot=500_000, retire_age=60, end_age=95,
+                         target_net_income=30_000, state_pension_age=67,
+                         state_pension_annual=12_548, take_pcls=True)
+
+        # F12a. The DEFAULT must reproduce the shipped page exactly. Not
+        # "closely" — a config with fee omitted and a config with fee=0 must
+        # give the identical number, because the JS is deterministic on a fixed
+        # seed. This is the check that protects the published 35% / 20,650 / 81.
+        _omitted = await pg.evaluate("cfg => simulate(cfg).successRate", _fee_base)
+        _zero = await pg.evaluate("cfg => simulate(cfg).successRate",
+                                  dict(_fee_base, fee=0.0))
+        ok = _omitted == _zero
+        if not ok:
+            fails.append("fee omitted differs from fee=0")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'fee omitted == fee 0.0, exactly':<50} "
+              f"{_omitted*100:>10.4f} %")
+
+        # F12b. MULTIPLICATIVE, NOT ADDITIVE — the one modelling decision 41b
+        # actually made, checked deterministically at vol=0 against a closed
+        # form, on a pot that cannot deplete (10d). A `mu - fee` engine gives a
+        # visibly different closing balance, so this assertion cannot be
+        # satisfied by the model it excludes (10h).
+        _det = dict(_fee_base, vol=0.0, paths=200, pot=1_000_000, end=90,
+                    target=25_000, takePcls=False, sp=0, spAge=200, fee=0.015)
+        _js_det = await pg.evaluate(
+            "cfg => { const r = simulate(cfg); return r.bal[(r.years+1)-1]; }", _det)
+        _gross = R.gross_for_net(25_000, 0.0)
+        def _closed(growth):
+            _p = 1_000_000.0
+            for _ in range(30):
+                _p = (_p - min(_p, _gross)) * growth
+            return _p
+        _mult = _closed((1 + 0.0294) * (1 - 0.015))     # log1p(-fee) form
+        _addi = _closed(1 + 0.0294 - 0.015)             # the naive - fee form
+        chk("charges are multiplicative (closed form)", _js_det, _mult, 1.0)
+
+        # F12b-py. THE SAME CHECK ON THE PYTHON SIDE, and it is not optional.
+        # Running the removal harness showed that making `lognormal_real`
+        # additive left this whole suite GREEN: the closed form above tests the
+        # JS only, and the stochastic rows below carry a 1.5pp Monte Carlo
+        # tolerance while additive-vs-multiplicative is worth about 0.5pp at
+        # these charge levels. So the Python fee FORM was checked by nothing —
+        # 10a, in a test written the same afternoon as 10a's own automation,
+        # and found by RUNNING the removal rather than by reading the test.
+        #
+        # Asserted on the return itself at vol=0, where lognormal_real is exact
+        # and deterministic, so there is no tolerance to hide inside.
+        _r = float(lognormal_real(0.0294, 0.0, np.zeros((1, 1)), "geo", 0.015)[0, 0])
+        _r_mult = (1 + 0.0294) * (1 - 0.015) - 1
+        _r_addi = 0.0294 - 0.015
+        ok = abs(_r - _r_mult) < 1e-12 and abs(_r - _r_addi) > 1e-5
+        if not ok:
+            fails.append("the PYTHON fee is not multiplicative")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'...in the PYTHON engine too, exactly':<50} "
+              f"{_r:.10f} vs {_r_addi:.10f} additive")
+        _sep = abs(_js_det - _addi)
+        ok = _sep > 1_000.0 and _js_det > 1_000.0
+        if not ok:
+            fails.append("F12b cannot tell multiplicative from additive here")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'...and NOT additive — the two are separable':<50} "
+              f"£{_sep:>13,.0f} apart")
+
+        # F12c/d. Cross-engine at two real charge levels, with an effect
+        # assertion in each engine separately (10b).
+        _z = standard_normals(20_000, 35, 7)
+        _js_f, _py_f = {}, {}
+        for _f in (0.0, 0.0075, 0.015):
+            _js_f[_f] = await pg.evaluate("cfg => simulate(cfg).successRate",
+                                          dict(_fee_base, fee=_f)) * 100
+            _py_f[_f] = simulate(_fee_plan,
+                                 lognormal_real(0.0294, 0.15, _z, "geo", _f)
+                                 ).success_rate * 100
+            chk(f"success rate at {_f*100:.2f}% charges (±1.5pp MC)",
+                _js_f[_f], _py_f[_f], 1.5)
+        for _eng, _d in (("JS", _js_f), ("Python", _py_f)):
+            _eff = _d[0.0] - _d[0.015]
+            ok = _eff > 3.0
+            if not ok:
+                fails.append(f"the fee has no effect in the {_eng} engine")
+            print(f"  {'PASS' if ok else 'FAIL'}  "
+                  f"{'charges CHANGE the answer in ' + _eng:<50} "
+                  f"{_eff:>10.2f} pp")
+        # Monotone: more charges cannot help.
+        for _eng, _d in (("JS", _js_f), ("Python", _py_f)):
+            ok = _d[0.0] >= _d[0.0075] >= _d[0.015]
+            if not ok:
+                fails.append(f"{_eng}: success rate not monotone in the fee")
+            print(f"  {'PASS' if ok else 'FAIL'}  "
+                  f"{_eng + ': success falls as charges rise':<50} "
+                  f"{_d[0.0]:.2f} > {_d[0.0075]:.2f} > {_d[0.015]:.2f}")
+
+        # F12e. 37g — uncensored, built into the script rather than remembered.
+        for _eng, _d in (("js", _js_f), ("py", _py_f)):
+            for _f in (0.0, 0.0075, 0.015):
+                ok = 0.5 < _d[_f] < 99.5
+                if not ok:
+                    fails.append(f"F12 {_eng} fee={_f} is at a bound")
+        print(f"  {'PASS' if all(0.5 < v < 99.5 for d in (_js_f, _py_f) for v in d.values()) else 'FAIL'}  "
+              f"{'every F12 rate is strictly inside (0,100)':<50} "
+              f"{min(list(_js_f.values()) + list(_py_f.values())):.2f}-"
+              f"{max(list(_js_f.values()) + list(_py_f.values())):.2f} %")
+
+        # F12f. An impossible charge must RAISE. fee=1.0 is log1p(-1) = -inf and
+        # anything above it is NaN — both would propagate silently through every
+        # path and produce a plausible-looking answer. Asserted on the message.
+        try:
+            lognormal_real(0.0294, 0.15, _z, "geo", 1.0)
+            ok, _m = False, "no exception"
+        except ValueError as _e:
+            _m = str(_e)
+            ok = "fee must be in" in _m
+        if not ok:
+            fails.append(f"an impossible fee was not refused: {_m}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'a fee of 100% is REFUSED':<50} {_m[:28]!r}")
+
         print("\nF11. THE 10c AUDIT — AUTOMATED, AND IN BOTH DIRECTIONS (41a)")
         print("=" * 86)
         # 31 ran this audit BY HAND, in ONE direction — "grep for literals in
@@ -855,6 +986,7 @@ async def main():
             "real": "FCAPrescribed.real / lognormal_real(real=...)",
             "vol": "FCAPrescribed.vol / lognormal_real(vol=...)",
             "conv": "FCAPrescribed.conv / lognormal_real(conv=...)  <- 41a, the gap this audit missed",
+            "fee": "FCAPrescribed.fee / lognormal_real(fee=...)  <- 41b, and F11 caught it unmapped on the first run",
             "scen": "FCAPrescribed.scenario (resolved into P.real before simulate reads it)",
             "paths": "the n_paths dimension of the returns array",
         }
