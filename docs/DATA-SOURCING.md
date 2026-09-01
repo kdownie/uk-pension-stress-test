@@ -433,9 +433,15 @@ about twenty minutes. Each one saved a build.
   comparison stands. **But §A's recommendation stands above it**: the return
   *assumption* is worth ±12pp and the path *shape* about 3pp, and only the
   second needs a dataset at all.
-- **Tell Ryland Thomas.** He asked to be told, offered further help, and is
-  preparing an openly-licensed version of the dataset. There is now something
-  concrete to say: it could not do either job, for two specific and checkable
-  reasons. That reply has been outstanding since 25 August.
+- ~~**Tell Ryland Thomas.**~~ **DONE 31 August 2026** — `boe-licence-query.md`
+  §7. He was told the permission has gone unused and given both reasons: no
+  dividend yield, and the workbook ends in 2016. **Two things came back out of
+  it and are still open**: the hosting-costs question (§6a — ask Sally before
+  acting, not after), and whether the openly-licensed version he is preparing
+  extends past 2016, which would make the inflation question worth reopening.
+- **The public-quoting disclosure.** `boe-licence-query.md` quotes his reply
+  verbatim in a public repository and he was never asked. Raised with him on
+  31 August with an offer to summarise or remove. **If he asks for either, do it
+  the same day.** See §7b there for the rule this leaves.
 - **The FCA maximum rates** may be under review — unchanged from the list above,
   and still worth re-checking before any relaunch.

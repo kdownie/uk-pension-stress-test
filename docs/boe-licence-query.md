@@ -1,9 +1,15 @@
 # Licence query — Bank of England
 
-The licence position for *A Millennium of Macroeconomic Data for the UK* is what
-blocks the historical-return engine. Nothing shipped depends on it: the live
-engine uses FCA projection rates and needs no dataset, and `returns.py` isolates
-the whole dependency behind `load_history()`.
+**CLOSED 31 August 2026. The permission was granted and has gone unused.** The
+dataset could not do either job it was fetched for — equity total returns (§6d)
+or the two policy assumption ranges (§7) — and the project sources those from
+ONS instead. See `DATA-SOURCING.md` §I. Nothing here is blocking anything.
+
+*Originally, and left for the record:* the licence position for *A Millennium of
+Macroeconomic Data for the UK* is what blocks the historical-return engine.
+Nothing shipped depends on it: the live engine uses FCA projection rates and
+needs no dataset, and `returns.py` isolates the whole dependency behind
+`load_history()`.
 
 This file is the correspondence record.
 
@@ -13,6 +19,7 @@ This file is the correspondence record.
 | 17 Aug 2026 | Holding reply from **BEEDS portal administration** — "forwarded your query to the relevant business area". |
 | 20 Aug 2026 | No substantive reply. Query identified as mis-routed; follow-up sent to the dataset's named contact. |
 | **25 Aug 2026** | **Substantive reply from Ryland Thomas, one of the dataset's two authors, copying Sally Srinivasan who administers the Bank's research datasets. Permission granted — see §6. Thread closed with a short acknowledgement the same evening.** |
+| **31 Aug 2026** | **Reported back that the permission has gone unused, with both reasons — see §7.** Also disclosed that this file quotes his reply publicly, and offered to summarise or remove it. |
 
 ---
 
@@ -262,6 +269,111 @@ starting year (1900) sits outside the span entirely.
 covers long-run UK inflation, rates and wages, which is where the project now
 intends to use it.
 
+> **WRONG, 31 August 2026 — the inflation plan died too.** The dataset **ends in
+> 2016**, and the assumption it was meant to bound depends most on 2022, when
+> CPI reached 9.1%. Sourced from this workbook the range would have topped out
+> at 4.5%. ONS series were used instead. `DATA-SOURCING.md` §I, and the reason
+> is asserted in `verify.py` section I5 so it cannot be quietly reversed.
+
 **The lesson, recorded because it cost ten days:** the field list was the
 cheaper question and it was asked second. **Check that the data can do the job
 before chasing the rights to it.**
+
+---
+
+## 7. Reported back, 31 August 2026 — the permission goes unused
+
+**To:** `ryland.thomas@bankofengland.co.uk`
+**Cc:** Sally Srinivasan
+**Subject:** "A Millennium of Macroeconomic Data for the UK" — thank you, and what happened next
+
+> **Recorded from the draft as prepared.** If the sent version differs, this
+> entry should be corrected to match what actually went — the point of this file
+> is that it is the record, not the intention.
+
+Dear Ryland,
+
+Thank you for your answer of 25 August, and for dealing with it directly rather
+than sending me round the Communications route. It was a good deal more generous
+than my question.
+
+I said I would report back. The honest report is that I have not used the
+dataset, and the two reasons may be worth knowing while you are preparing the
+next version.
+
+**Equity total returns.** The only equity price index in v3.1 begins in April
+1962 and carries no dividend yield, so total returns cannot be constructed from
+the workbook alone. The start date turned out to matter more than the missing
+dividends: the UK result I wanted to test rests on a 1900 start year, sixty-two
+years before the series begins. A withdrawal test run on 1962–2017 would come
+back more optimistic than the truth, and look authoritative while doing it.
+
+Your signature pointed me at the ESCoE historical data collection, which I had
+not found on my own. The Actuaries Investment Share Index 1923–1962 does carry
+both prices and yields, and with Campbell, Grossman and Turner before it, a UK
+total-return series back to the 1920s is clearly constructible. I decided
+against building it — three sources, three splice points and three sets of
+citations, for an improvement my own testing puts at about two percentage
+points on a figure already uncertain by twelve. That is a judgement about scope
+in a project I maintain alone, not a criticism of the data.
+
+**Long-run inflation.** This was the use I actually expected to make of the
+dataset, and it foundered on something simpler: v3.1 ends in 2016. The
+assumption I was trying to bound is what inflation does while tax thresholds
+are frozen, and the observation that matters most is 2022, when CPI reached
+9.1%. Sourced from the Millennium data the range would have topped out at 4.5%.
+I have used ONS series instead — CPI and average weekly earnings, 1989 and 2000
+to date, under the Open Government Licence.
+
+So the permission has gone unused. I would rather tell you that than leave it
+looking as though it had quietly been taken up.
+
+One thing I should mention: I keep the project's working notes public, and that
+includes the correspondence on this licence question, with your reply quoted.
+If you would prefer it summarised rather than quoted, or removed, say the word
+and I will change it — it did not occur to me to ask first, and it should have.
+
+I would be glad to hear when the openly-licensed version lands, particularly if
+it extends past 2016.
+
+With thanks,
+
+Kevin Downie
+https://pensionstresstest.co.uk
+
+---
+
+### 7a. Why this was sent at all
+
+The permission was granted generously and then not used. Saying nothing would
+have left a courteous correspondent to assume his answer had been taken up, and
+would have wasted the one genuinely useful thing this episode produced: **two
+specific, checkable reasons why a dataset did not fit two jobs, delivered to the
+person preparing its next version.** No dividend yield, and it stops in 2016.
+Both are things a maintainer can act on.
+
+### 7b. The disclosure that should have come first
+
+This file quotes Ryland's reply verbatim and the repository is public. **He was
+never asked.** It is a professional reply about licensing rather than anything
+personal, and the risk is low — but low risk is not the same as permission, and
+the right moment to raise it was before publishing, not six days after.
+
+Raised in the email, with an offer to summarise or remove. **If he asks for
+either, do it the same day and note it here.**
+
+**The general rule this leaves:** when correspondence is going into a public
+record, tell the correspondent while you are still writing to them anyway. It
+costs one sentence in an email that was being sent regardless.
+
+### 7c. What remains open with the Bank
+
+- **Hosting costs.** §6a: Ryland did not rule out a donation or hosting link and
+  asked to discuss it. Still unresolved, and still nothing concrete to decide.
+  **Ask Sally before acting, not after.** Deliberately kept out of the 31 August
+  email for that reason.
+- **The openly-licensed version.** Asked to be told when it lands. If it extends
+  past 2016 the inflation question is worth reopening — though ONS covers it
+  perfectly well under a licence that raises no MIT conflict, so it would be a
+  matter of preference rather than need.
+
