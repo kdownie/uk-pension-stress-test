@@ -445,8 +445,17 @@ Being explicit about this matters more than the features:
   also computed once per person per year rather than per path.
 - No National Insurance (correct for pension income, wrong the moment earned
   income is added), no MPAA or annual allowance, no DB pensions or annuities, no
-  pension IHT treatment, no investment charges, no care costs, no ISAs or other
-  wrappers yet.
+  pension IHT treatment, no care costs, and no holdings outside a pension or an
+  ISA.
+
+  > CORRECTED 2026-09-01. This line read "no investment charges, no care costs,
+  > no ISAs or other wrappers yet" until today. **The ISA half had been wrong
+  > since 26 August**, when an ISA as a starting asset shipped (stage D) — six
+  > days in which this file, `README.md` and `public/findings.html` all told a
+  > reader the tool could not do something it could, while `public/index.html`
+  > had already been updated. Annual charges shipped on 1 September. 10f: the
+  > fix landed in one file and not its three neighbours, and nothing in the
+  > neighbours was edited, so nothing looked wrong in them.
 - Tax-free cash is capped at the £268,275 lump sum allowance.
 - Mortality is a date you pick, not a probability.
 - The State Pension defaults to the full new State Pension, which assumes a full
