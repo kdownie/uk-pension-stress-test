@@ -35,13 +35,22 @@ This is an attempt at the second thing.
   Annex 2) rather than a house view — note these are the Handbook's *maximum*
   permitted rates, not prescribed ones; see
   [docs/FINDINGS.md §4](docs/FINDINGS.md)
+- **Whether your return figure is a geometric or an arithmetic mean** — most
+  calculators never say, and at the default settings the choice is worth 12.3
+  percentage points of the result
+- **Annual charges**, deducted from the return on invested money. Defaults to
+  **0%**, so every other figure here is a return before charges
+- **An ISA as a starting asset**, held as cash or invested, alongside the pension
+- **Withdrawal ordering** — which pool is spent first, across four orders
+- **State Pension growth above inflation**, with the triple lock's own formula
+  run over ONS data to show what it has actually been worth
 
 ## What it does not do
 
 Defined benefit pensions and annuities · the money purchase annual allowance ·
-inheritance tax · investment charges · care costs · ISAs and unwrapped holdings
-· mortality as a probability rather than a date you choose — and only a partner's death, never your own · anything at all
-about your personal circumstances.
+inheritance tax · care costs · holdings outside a pension or an ISA · mortality
+as a probability rather than a date you choose — and only a partner's death,
+never your own · anything at all about your personal circumstances.
 
 ## How to run it
 
