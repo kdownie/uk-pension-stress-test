@@ -653,6 +653,21 @@ python verify.py &amp;&amp; python verify_household.py &amp;&amp; python verify_
 with a source URL and the date it was checked. If a number is not there with a
 source, it is not used.</p>
 
+<p><strong>And you can check it without installing anything.</strong> The
+calculator will write you a CSV of one path, year by year, with volatility set to
+zero so that it is reproducible: opening balances for each of the three pools,
+what was drawn from each, the gross pension withdrawal, the income tax on it, and
+the growth applied. Every row can be recomputed from the columns beside it in a
+spreadsheet. The file is written by your browser and nothing is uploaded.</p>
+
+<p>It is worth doing, because it shows you an approximation we would otherwise
+only have described. In the single year where retained tax-free cash covers
+<em>part</em> of the income, the engine scales the taxable withdrawal in
+proportion rather than re-solving the tax exactly &mdash; at the default settings
+that draws about <strong>&pound;520</strong> more gross than needed, in one year
+out of thirty-five. We have always disclosed that simplification. Now you can see
+it happen.</p>
+
 <p class="src">Monte Carlo figures move by a few tenths of a point between random
 seeds, so every simulated figure here is averaged over three seeds and quoted to
 one decimal place.

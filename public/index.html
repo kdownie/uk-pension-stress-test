@@ -385,6 +385,25 @@ footer a{color:var(--s450)}
       <h2>The assumptions behind this result</h2>
       <div class="src" id="assump"></div>
     </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Take the numbers away</h2>
+      <p class="hint">Both files are written by your browser, from the run above.
+        Nothing is uploaded and no request is made — the same as everything else
+        on this page.</p>
+      <p style="margin:10px 0 0">
+        <button class="ghost" id="dlBands">Download the chart data (CSV)</button>
+        <button class="ghost" id="dlAudit">Download one path, year by year (CSV)</button>
+      </p>
+      <p class="hint" id="dlNote" style="margin-top:10px">The first is the five
+        percentile lines the chart above draws, one row per year. The second is a
+        single path with <b>volatility set to zero</b>, so it is reproducible:
+        every year&rsquo;s tax is the tax on that year&rsquo;s gross withdrawal,
+        and the closing balance is the three pools drawn down and grown, each at
+        its own rate &mdash; so every row can be recomputed from the columns
+        beside it. It uses your
+        current settings in every other respect.</p>
+    </div>
   </div>
 
     <div class="panel" id="assumpPanel">
@@ -777,6 +796,15 @@ function simulate(P){
   // caller believes is one thing and is another, which is 10b's mistake.
   if(P.couple && order!=="tax_free_first")
     throw new Error("withdrawal ordering is single-person only in this build");
+  // 41c. The audit trace records ONE path, year by year, so a reader can
+  // reproduce the engine in a spreadsheet. It is single-person only: a
+  // household splits each year's withdrawal across two people, so a single
+  // gross-and-tax column would be a summary pretending to be an audit.
+  // Refused rather than silently skipped — a trace that quietly returns
+  // nothing is 10b's mistake, an output the caller believes is one thing.
+  if(P.trace && P.couple)
+    throw new Error("the audit trace is single-person only in this build");
+  const tr = P.trace ? [] : null;
   seedState = 987654321;
   const N = P.paths;
   const z = normals(N*years);
@@ -815,7 +843,11 @@ function simulate(P){
     const netOther = others.reduce((s,o)=>s+netIncome(o,uprate,P.region),0);
     const needNet = Math.max(0, target-netOther);
     const splits = optimalSplit(needNet, others, P.region, uprate);
-    yearInfo.push({age, aliveB, needNet,
+    yearInfo.push({age, aliveB, needNet, uprate, target,
+      // 41c: the trace needs the year's taxable non-pension income and the
+      // band uprate to show its tax arithmetic. Both are already computed
+      // here, per YEAR and never per path, so carrying them costs nothing.
+      other0: others[0],
       grossA: splits[0]||0, grossB: splits[1]||0,
       // STAGE E. Only built for the single-person case — see the guard above.
       // Computed per YEAR, never per path, exactly as the splits are.
@@ -845,26 +877,37 @@ function simulate(P){
       // outside the estate and can be kept in drawdown by a beneficiary.
       if(couple && !info.aliveB && !pooled){ potA+=potB; potB=0; pooled=true; }
       let short;
+      // 41c. The three pools as they stood before this year's draws. A single
+      // "opening balance" total CANNOT be reconciled to the closing balance,
+      // because the pools grow at different rates — a pension at the market
+      // rate, retained cash at its own, an ISA at a third. Recording only the
+      // total would have shipped an audit file that does not add up, which is
+      // worse than no audit file.
+      const _oP = potA+potB, _oC = cash, _oI = isa;
+      // Where the year's money came from, for the trace only. These are
+      // written but never read by the simulation, which is what makes the
+      // trace provably number-neutral — asserted in verify_web F13.
+      let _fc=0,_fi=0,_gp=0;
       if(order==="tax_free_first"){
         /* ---------- THE SHIPPED PATH, unchanged ---------- */
         const fromCash=Math.min(cash, info.needNet);
-        cash-=fromCash;
+        cash-=fromCash; _fc=fromCash;
         /* The ISA is drawn AFTER retained tax-free cash and BEFORE the
            pensions. Second place keeps isa = 0 byte-identical to the shipped
            engine. Mirrors the Python engines, which must agree. */
         const fromIsa=Math.min(isa, info.needNet-fromCash);
-        isa-=fromIsa;
+        isa-=fromIsa; _fi=fromIsa;
         const frac = info.needNet>0
           ? (info.needNet-fromCash-fromIsa)/info.needNet : 0;
         let want=info.grossA*frac, takenA=Math.min(potA,want);
-        potA-=takenA; short=want-takenA;
+        potA-=takenA; short=want-takenA; _gp+=takenA;
         if(info.aliveB){
           want=info.grossB*frac;
           const takenB=Math.min(potB,want);
-          potB-=takenB; short+=want-takenB;
+          potB-=takenB; short+=want-takenB; _gp+=takenB;
           // one pot dry, the other not: cover from whichever still has money
-          if(short>1e-6){ const t=Math.min(potA,short); potA-=t; short-=t; }
-          if(short>1e-6){ const t=Math.min(potB,short); potB-=t; short-=t; }
+          if(short>1e-6){ const t=Math.min(potA,short); potA-=t; short-=t; _gp+=t; }
+          if(short>1e-6){ const t=Math.min(potB,short); potB-=t; short-=t; _gp+=t; }
         }
       } else {
         /* ---------- EXACT RE-GROSSING, and the ordering strategies ---------
@@ -887,8 +930,8 @@ function simulate(P){
           const delivered=newNet-potNet; potNet=newNet;
           return delivered;
         };
-        const drawCash = w => { const t=Math.min(cash,Math.max(w,0)); cash-=t; return t; };
-        const drawIsa  = w => { const t=Math.min(isa, Math.max(w,0)); isa -=t; return t; };
+        const drawCash = w => { const t=Math.min(cash,Math.max(w,0)); cash-=t; _fc+=t; return t; };
+        const drawIsa  = w => { const t=Math.min(isa, Math.max(w,0)); isa -=t; _fi+=t; return t; };
         const need=info.needNet;
         if(order==="fill_allowance"){
           /* The 0%-rate slice of the pension first. Once the State Pension is
@@ -916,6 +959,7 @@ function simulate(P){
           got+=drawPension(need-got);
         }
         short=Math.max(need-got,0);
+        _gp=potGross;
       }
       if(short>1e-6 && !failed){ failed=true; depAge[p]=info.age; }
       const g=1+Math.expm1(mu + P.vol*z[p*years+y]);
@@ -926,17 +970,24 @@ function simulate(P){
          was an assumption, not a fact. "cash" at 0% real reproduces it and is
          the textbook cash assumption; "invested" rides the same path as the
          pensions. Mirrors pcls_held_as in the Python engines. */
-      if(P.pclsHeld==="invested") cash*=g;
-      else if(P.pclsCashReal) cash*=(1+P.pclsCashReal);
+      // One expression per pool, used BOTH to grow it and to report it, so the
+      // trace cannot drift from what the engine actually did.
+      const gCash = P.pclsHeld==="invested" ? g : 1+(P.pclsCashReal||0);
+      cash*=gCash;
       // The ISA grows by its OWN rule, never by pclsHeld.
-      if(isaHeld==="invested") isa*=g;
-      else if(isaReal) isa*=(1+isaReal);
+      const gIsa = isaHeld==="invested" ? g : 1+(isaReal||0);
+      isa*=gIsa;
       bal[p*(years+1)+y+1]=potA+potB+cash+isa;
+      if(tr && p===0) tr.push({age:info.age, open:bal[p*(years+1)+y],
+        openPension:_oP, openCash:_oC, openIsa:_oI,
+        other:info.other0, target:info.target, needNet:info.needNet,
+        fromCash:_fc, fromIsa:_fi, gross:_gp, uprate:info.uprate,
+        growth:g, gCash, gIsa, close:potA+potB+cash+isa});
     }
     if(!failed) succ++;
   }
   return {years,N,bal,depAge,successRate:succ/N,lump:lumpA+lumpB,
-          startPot:startA+startB};
+          startPot:startA+startB, trace:tr};
 }
 
 function quantileBands(r){
@@ -949,6 +1000,79 @@ function quantileBands(r){
   }
   return out;
 }
+/* ==================================================================
+   CSV EXPORT (41c)
+
+   Everything happens in this tab. Blob + createObjectURL, no request, no
+   upload, nothing leaves the browser — which is the same claim the rest of
+   the page makes, so the buttons say it out loud rather than relying on
+   anyone taking it on trust.
+
+   Two exports, deliberately, and not a raw dump:
+     1. The percentile bands — exactly what the fan chart draws.
+     2. ONE deterministic path at zero volatility, with the year-by-year tax
+        arithmetic. This is the one that makes the tool checkable: every
+        column can be reproduced in a spreadsheet from the columns beside it.
+   ================================================================== */
+function toCSV(rows){
+  return rows.map(r => r.map(c => {
+    const s = (c === null || c === undefined) ? "" : String(c);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(",")).join("\r\n");
+}
+function downloadCSV(name, rows){
+  const b = new Blob([toCSV(rows)], {type:"text/csv;charset=utf-8"});
+  const u = URL.createObjectURL(b), a = document.createElement("a");
+  a.href = u; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 0);
+}
+const _r2 = x => (Math.round(x*100)/100).toFixed(2);
+
+function bandsRows(){
+  const P = readParams(), r = simulate(P);
+  if(!r) return null;
+  const q = quantileBands(r);
+  const rows = [["age","p5","p25","median","p75","p95"]];
+  for(let y=0; y<=r.years; y++)
+    rows.push([P.retire+y, ...q.map(series => _r2(series[y]))]);
+  return rows;
+}
+
+/* The audit path. Volatility is forced to ZERO and paths to one, because the
+   point is a single reproducible path rather than a sample of the fan — so
+   the filename and the on-page note both say so. Every other setting is
+   whatever is on screen.
+
+   income_tax is the exact tax on the gross drawn that year:
+       incomeTax(other + gross) - incomeTax(other)
+   both at that year's band uprate. Where retained tax-free cash or an ISA
+   covers part of a year, the SHIPPED order scales the taxable draw linearly
+   rather than re-grossing exactly (37a, a documented choice worth ~0.1pp).
+   This export is the first place that choice is visible to a reader. */
+function auditRows(){
+  const P = Object.assign(readParams(), {vol:0, paths:1, trace:true});
+  const r = simulate(P);
+  if(!r || !r.trace) return null;
+  const rows = [["age","opening_total","opening_pension","opening_tax_free_cash",
+                 "opening_isa","other_taxable_income","target_net",
+                 "net_needed_from_pots","from_tax_free_cash","from_isa",
+                 "gross_pension_withdrawal","income_tax","net_from_pension",
+                 "band_uprate","pension_growth_factor","cash_growth_factor",
+                 "isa_growth_factor","closing_total"]];
+  for(const t of r.trace){
+    const tax = incomeTax(t.other + t.gross, t.uprate, P.region)
+              - incomeTax(t.other, t.uprate, P.region);
+    rows.push([t.age, _r2(t.open), _r2(t.openPension), _r2(t.openCash),
+               _r2(t.openIsa), _r2(t.other), _r2(t.target),
+               _r2(t.needNet), _r2(t.fromCash), _r2(t.fromIsa),
+               _r2(t.gross), _r2(tax), _r2(t.gross - tax),
+               t.uprate.toFixed(6), t.growth.toFixed(8),
+               t.gCash.toFixed(8), t.gIsa.toFixed(8), _r2(t.close)]);
+  }
+  return rows;
+}
+
 function medianDepletion(r){
   const d=[]; for(let i=0;i<r.N;i++) if(r.depAge[i]>0) d.push(r.depAge[i]);
   if(!d.length) return null;
@@ -1406,6 +1530,23 @@ $("mode").addEventListener("change",e=>{
     ? Math.min(+inc.max, Math.round(+inc.value*f/500)*500)
     : Math.max(+inc.min, Math.round(+inc.value/f/500)*500);
   schedule();
+});
+$("dlBands").addEventListener("click",()=>{
+  const rows=bandsRows();
+  if(rows) downloadCSV("pension-stress-test-chart-data.csv", rows);
+});
+$("dlAudit").addEventListener("click",()=>{
+  // The audit path is single-person; say so rather than producing a file that
+  // quietly means something else.
+  if(readParams().couple){
+    $("dlNote").innerHTML = "<b>The year-by-year path is single-person only.</b> "
+      + "A household splits each year&rsquo;s withdrawal between two people, so "
+      + "one gross-and-tax column would be a summary pretending to be an audit. "
+      + "Switch to one person to download it.";
+    return;
+  }
+  const rows=auditRows();
+  if(rows) downloadCSV("pension-stress-test-audit-path-zero-volatility.csv", rows);
 });
 $("theme").addEventListener("click",()=>{
   const cur=document.documentElement.getAttribute("data-theme");
