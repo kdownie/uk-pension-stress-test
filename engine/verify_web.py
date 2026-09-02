@@ -943,6 +943,125 @@ async def main():
         print(f"  {'PASS' if ok else 'FAIL'}  "
               f"{'a fee of 100% is REFUSED':<50} {_m[:28]!r}")
 
+        print("\nF13. THE CSV AUDIT EXPORT (41c)")
+        print("=" * 86)
+        _ax = dict(pot=500_000, retire=60, end=95, target=30_000, sp=12_548,
+                   spAge=67, other=0, takePcls=True, pclsSpend=False,
+                   real=0.0294, vol=0.0, conv="geo", fee=0.0, freeze=0,
+                   paths=1, couple=False, region="ruk", pot2=0, retire2=0,
+                   sp2=0, spAge2=200, other2=0, deathAge=0, survFrac=0.67)
+
+        # F13a. NUMBER-NEUTRALITY. The trace writes variables the simulation
+        # never reads — but "it only records" is precisely the reasoning that
+        # let 41a sit unchecked for sixteen days, so it is asserted. Exact
+        # equality on the whole balance array, not a tolerance.
+        _neutral = await pg.evaluate("""cfg => {
+            const a = simulate(Object.assign({}, cfg, {trace:false, paths:2000, vol:0.15}));
+            const b = simulate(Object.assign({}, cfg, {trace:true,  paths:2000, vol:0.15}));
+            let same = a.successRate === b.successRate && a.bal.length === b.bal.length;
+            for (let i = 0; same && i < a.bal.length; i++) if (a.bal[i] !== b.bal[i]) same = false;
+            return {same, n: a.bal.length, succ: a.successRate};
+        }""", _ax)
+        ok = _neutral["same"]
+        if not ok:
+            fails.append("the audit trace CHANGES the simulation")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'trace:true is byte-identical to trace:false':<50} "
+              f"{_neutral['n']:,} balances equal")
+
+        # F13b. THE EXPORT MUST RECONCILE. An audit file that does not add up is
+        # worse than none, and a single "opening balance" total cannot add up:
+        # the three pools grow at different rates. Checked on every row.
+        _rows = await pg.evaluate("""cfg => {
+            document.querySelector('#pot').value = cfg.pot;
+            return (function(){ return auditRows(); })();
+        }""", _ax)
+        _h = {k: i for i, k in enumerate(_rows[0])}
+        _worst, _f = 0.0, lambda r, k: float(r[_h[k]])
+        for _row in _rows[1:]:
+            _pred = ((_f(_row, "opening_pension") - _f(_row, "gross_pension_withdrawal"))
+                     * _f(_row, "pension_growth_factor")
+                     + (_f(_row, "opening_tax_free_cash") - _f(_row, "from_tax_free_cash"))
+                     * _f(_row, "cash_growth_factor")
+                     + (_f(_row, "opening_isa") - _f(_row, "from_isa"))
+                     * _f(_row, "isa_growth_factor"))
+            _worst = max(_worst, abs(_pred - _f(_row, "closing_total")))
+        ok = _worst < 0.02          # the file rounds to pence
+        if not ok:
+            fails.append(f"the audit export does not reconcile (£{_worst:.4f})")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'every row reconciles to its own columns':<50} "
+              f"worst £{_worst:.4f} over {len(_rows)-1} rows")
+
+        # F13c. The tax column is the PYTHON engine's tax function, row by row.
+        # The export's whole claim is that a reader can recompute it; this is
+        # that recomputation, done by the implementation verify.py already
+        # checks against published HMRC figures.
+        _bad, _checked = [], 0
+        for _row in _rows[1:]:
+            _g, _o, _u = (_f(_row, "gross_pension_withdrawal"),
+                          _f(_row, "other_taxable_income"), _f(_row, "band_uprate"))
+            if _g <= 0:
+                continue
+            _want = R.income_tax(_o + _g, "ruk", _u) - R.income_tax(_o, "ruk", _u)
+            _checked += 1
+            if abs(_want - _f(_row, "income_tax")) > 0.02:
+                _bad.append((_row[0], _want, _f(_row, "income_tax")))
+        ok = not _bad and _checked > 5
+        if not ok:
+            fails.append(f"audit tax column disagrees with the Python tax function: {_bad[:2]}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'income_tax matches the Python tax function':<50} "
+              f"{_checked} taxed years, {len(_bad)} disagreements")
+
+        # F13d. The trace's last closing balance IS the engine's own final
+        # balance — the export cannot quietly be a different run.
+        #
+        # ON A POT THAT DOES NOT DEPLETE. The first draft of this check ran at
+        # the site defaults, where a zero-volatility path empties the pot: it
+        # compared £0.00 with £0.00 and passed, and would have passed just as
+        # happily if the trace had come from an entirely different run. That is
+        # 10d, and 37g is the same mistake made minutes after writing about it.
+        # So the uncensored condition is asserted here, in the script, rather
+        # than remembered.
+        _big = dict(_ax, pot=3_000_000)
+        _end = await pg.evaluate(
+            "cfg => { const r = simulate(Object.assign({}, cfg, {trace:true})); "
+            "return {fromTrace: r.trace[r.trace.length-1].close, "
+            "fromBal: r.bal[(r.years+1)-1]}; }", _big)
+        ok = _end["fromBal"] > 1_000.0
+        if not ok:
+            fails.append("F13d ran on a depleted pot — the comparison is censored")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'F13d case is uncensored (pot never empties)':<50} "
+              f"£{_end['fromBal']:>13,.0f}")
+        chk("the trace's last row IS the engine's final balance",
+            _end["fromTrace"], _end["fromBal"], 0.01)
+
+        # F13e. The couple case is REFUSED, by message, not merely by throwing
+        # something somewhere (10h). A trace that silently returned nothing
+        # would be an output the caller believes is one thing and is another.
+        _msg = await pg.evaluate("""cfg => { try {
+            simulate(Object.assign({}, cfg, {trace:true, couple:true, pot2:300000,
+              retire2:60, sp2:12548, spAge2:67})); return "no exception";
+          } catch(e) { return e.message; } }""", _ax)
+        ok = "audit trace is single-person only" in _msg
+        if not ok:
+            fails.append(f"the couple audit trace was not refused: {_msg}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'a couple audit trace is REFUSED':<50} {_msg[:30]!r}")
+
+        # F13f. CSV quoting. Nothing in this export contains a comma today, but
+        # a writer that breaks on one is a bug waiting for the first person who
+        # exports something else through it.
+        _q = await pg.evaluate(
+            """() => toCSV([["a","b,c"],['say "hi"', 1]])""")
+        ok = _q == 'a,"b,c"\r\n"say ""hi""",1'
+        if not ok:
+            fails.append(f"CSV quoting is wrong: {_q!r}")
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'commas and quotes are escaped correctly':<50} {_q[:24]!r}")
+
         print("\nF11. THE 10c AUDIT — AUTOMATED, AND IN BOTH DIRECTIONS (41a)")
         print("=" * 86)
         # 31 ran this audit BY HAND, in ONE direction — "grep for literals in
@@ -987,6 +1106,12 @@ async def main():
             "vol": "FCAPrescribed.vol / lognormal_real(vol=...)",
             "conv": "FCAPrescribed.conv / lognormal_real(conv=...)  <- 41a, the gap this audit missed",
             "fee": "FCAPrescribed.fee / lognormal_real(fee=...)  <- 41b, and F11 caught it unmapped on the first run",
+            # 41c. `trace` is the one entry in this map that is NOT a modelling
+            # parameter. It records what the engine did; it does not change it.
+            # That claim is exactly the kind of "it's fine, it only..." that
+            # 41a hid behind, so it is not taken on trust: F13a asserts that
+            # trace:true and trace:false return byte-identical results.
+            "trace": "PRESENTATION ONLY, one-sided by decision — records path 0 for the CSV audit export; number-neutrality asserted in F13a, not assumed",
             "scen": "FCAPrescribed.scenario (resolved into P.real before simulate reads it)",
             "paths": "the n_paths dimension of the returns array",
         }
