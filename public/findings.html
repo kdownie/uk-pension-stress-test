@@ -627,7 +627,140 @@ that makes the lock worth least exactly when a pensioner needs it most.</p>
     the question the slider exists to let you answer yourself.</li>
 </ul>
 
-<h2><span class="num">11</span>How to check any of this</h2>
+<h2 id="s11"><span class="num">11</span>An undrawn pension is not hidden from the care means test</h2>
+
+<p>A common belief is that money left inside a pension is invisible to a local
+authority's financial assessment for care. Half of that is right, and the half
+that is wrong is the expensive half.</p>
+
+<p>The fund itself <strong>is</strong> disregarded as capital &mdash; the Care and
+Support (Charging and Assessment of Resources) Regulations 2014, Schedule 2,
+paragraph 21. ISAs, cash savings and Premium Bonds are counted in full. But the
+Care and Support Statutory Guidance directs a local authority to impute
+<em>notional income</em> on a pot that is not being drawn, at the maximum income
+that could be drawn under an annuity product. Where income is being drawn, the
+assessment does not add the two together and does not net them off: it takes the
+higher.</p>
+
+<p>So the income side of the assessment is a maximum, and leaving a pot alone
+imputes the maximum rather than nothing.</p>
+
+<h3>The size of it, from the government's own table</h3>
+
+<p>&ldquo;The maximum income available under an annuity&rdquo; is not a figure
+anyone publishes as a rate, but the Government Actuary's Department produces a
+table that measures exactly that quantity, and the guidance names GAD as a source
+of the estimate. On the table in force from 1 September 2025, a person aged
+<strong>85 or over</strong> at a 4.5% gilt yield has a basis amount of
+<strong>&pound;150 per &pound;1,000</strong> of fund &mdash; 15% of the pot a
+year.</p>
+
+<p>On a &pound;200,000 pot left undrawn at 85, that is about
+<strong>&pound;30,000 a year</strong> of assessed income before the State Pension
+is added. The published worked example in the same document is for a 60-year-old
+and gives &pound;62 per &pound;1,000. At the ages when residential care actually
+starts the figure is more than double it.</p>
+
+<h3>Which means the two halves pull in opposite directions</h3>
+
+<p>Spending an ISA and leaving the pension alone reduces assessed capital and
+raises imputed income. Spending the pension and leaving the ISA does the reverse.
+<strong>No order of withdrawal is out of reach of both halves of the
+assessment.</strong></p>
+
+<p>Running the engine on a &pound;300,000 pension beside a &pound;100,000 ISA,
+&pound;24,000 net a year from 60, and looking at the position at 85:</p>
+
+<table>
+  <caption>Deterministic, 3% real, both tax-free pools invested, every case
+    checked not to run dry. &ldquo;Cost of three years of care&rdquo; is the
+    household's own share of a &pound;67,704-a-year self-funder fee with the
+    means test re-run each year.</caption>
+  <thead><tr>
+    <th>Order money is drawn in</th>
+    <th class="n">Assessed capital</th>
+    <th class="n">Imputed income</th>
+    <th class="n">Lifetime tax</th>
+    <th class="n">Three years of care</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>Tax-free cash, then ISA, then pension</td>
+        <td class="n">&pound;0</td><td class="n">&pound;27,135</td>
+        <td class="n">&pound;73,436</td><td class="n">&pound;97,829</td></tr>
+    <tr><td>Pension up to the personal allowance first</td>
+        <td class="n">&pound;0</td><td class="n">&pound;33,471</td>
+        <td class="n">&pound;42,929</td><td class="n">&pound;114,130</td></tr>
+    <tr><td>Every pool pro rata</td>
+        <td class="n">&pound;63,206</td><td class="n">&pound;20,921</td>
+        <td class="n">&pound;44,397</td><td class="n">&pound;125,314</td></tr>
+    <tr><td>Pension first</td>
+        <td class="n">&pound;178,441</td><td class="n">&pound;0</td>
+        <td class="n">&pound;33,671</td><td class="n">&pound;203,112</td></tr>
+  </tbody>
+</table>
+
+<p class="src">Spread across the four: &pound;39,764 of lifetime income tax, and
+&pound;105,283 on three years of care &mdash; running the other way. The order
+that pays the most tax pays the least for care, and the order that pays the least
+tax pays the most.</p>
+
+<p>The success rate barely notices any of this. Measured separately, four orders
+differing by &pound;158,280 of closing balance change the set of paths that last
+to 95 by between nought and two in twenty thousand. A single probability cannot
+carry a difference of &pound;105,000, which is why this is written down here
+rather than added to the calculator.</p>
+
+<p><strong>Under local authority rules, spending your own capital on ordinary
+living costs is generally distinct from deliberately disposing of it. If a local
+authority decides assets were disposed of in order to reduce a care charge, it
+can assess the household as though those assets were still held.</strong></p>
+
+<h3>And above roughly &pound;350,000 of remaining pension it is worth nothing</h3>
+
+<p>Once the imputed income alone reaches the fee, the household pays the full
+cost whatever its capital looks like, and the order it drew money in stops
+mattering for care. Taking the State Pension into account, that point arrives at
+<strong>(&pound;67,704 &minus; &pound;12,548) &divide; 0.150 =
+&pound;367,709</strong> of pension remaining. Because the GAD factor moves with
+gilt yields the boundary is a band rather than a point &mdash;
+<strong>about &pound;340,000 to &pound;395,000</strong>. On a household with
+&pound;400,000 of pension and &pound;200,000 of ISA, all four orders pay
+identical care costs for the first three years.</p>
+
+<h3>What this does not show</h3>
+
+<ul>
+  <li><strong>The calculator does not model care at all.</strong> These figures
+    come from running the engine directly, not from anything on the front page.
+    The tool's headline numbers are unaffected by everything in this section.</li>
+  <li>One deterministic household at 3% real, not a probability. No success rate
+    should be read from this table.</li>
+  <li>The care episode is indicative: real terms, no growth during the stay, the
+    fee met from savings first and then the pension, the means test re-run each
+    year. It establishes the direction and the order of magnitude.</li>
+  <li>England only. Scotland's capital limits are &pound;36,750 and
+    &pound;22,750 with free personal and nursing care; Wales sets a single
+    residential limit of &pound;50,000; Northern Ireland matches England.</li>
+  <li>The fee is a <strong>self-funder</strong> rate. Councils block-purchase and
+    pay less &mdash; the same source puts their median at &pound;968 a week
+    against &pound;1,302.</li>
+  <li>Nobody publishes how long people stay in care in a form this could use.
+    Three years is an illustration, not an expectation. See &sect;8.</li>
+</ul>
+
+<p class="src">Capital limits &pound;23,250 and &pound;14,250, tariff income
+&pound;1 a week per &pound;250, personal expenses allowance &pound;31.80 a week:
+Department of Health and Social Care, <em>Social care &mdash; charging for care
+and support 2026 to 2027: local authority circular</em>, 17 February 2026.
+Notional income: Care and Support Statutory Guidance, Annex C, paragraphs 26(b),
+26(c) and 35. Capital disregard: Care and Support (Charging and Assessment of
+Resources) Regulations 2014, Schedule 2, paragraph 21. Annuity maximum: HMRC and
+Government Actuary's Department drawdown pension tables effective 1 September
+2025. Care fee: Personal Social Services Research Unit and Centre for Health
+Economics, <em>Unit Costs of Health and Social Care 2025</em>, published 1 June
+2026, 2024/25 values.</p>
+
+<h2><span class="num">12</span>How to check any of this</h2>
 
 <p>Every figure on this page comes out of code that anyone can run.</p>
 
