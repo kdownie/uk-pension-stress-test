@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import numpy as np
 
+import pathlib
+
 import uk_rules as R
 from decumulation import Plan, simulate, WITHDRAWAL_ORDERS
 
@@ -397,6 +399,150 @@ if not _i6_ok:
     _failures.append("triple lock produced negative real uprating — impossible")
 print(f"{PASS if _i6_ok else FAIL}  the lock never delivers negative real growth "
       f"(min {min(_lockB):.2f}%) — it is a max() against prices")
+
+# ==========================================================================
+print("\nJ. DATED FIGURES — scheduled changes and staleness (26g, 36e.2, 48k)")
+print("=" * 92)
+
+import datetime as _dt
+
+
+def _ok(name, cond, detail=""):
+    if not cond:
+        _failures.append(name)
+    print(f"{PASS if cond else FAIL}  {name:<52} {detail}")
+
+
+# J1. THE MECHANISM IS INERT BY DEFAULT. Nothing this engine has ever produced
+# can move, because _a() is untouched and there are no scheduled entries.
+_today = _dt.date.today()
+_inert = all(R.value_at(k, _today) == R.ASSUMPTIONS[k]["value"]
+             for k in R.ASSUMPTIONS)
+_ok("value_at == _a for every figure today", _inert,
+    f"{len(R.ASSUMPTIONS)} figures, 0 moved")
+
+# J2. Belt and braces on the three published numbers a reader would check.
+_ok("published figures unmoved by the dated layer",
+    R.value_at("personal_allowance", _today) == 12_570.0
+    and R.value_at("basic_rate_limit", _today) == 50_270.0
+    and R.value_at("lump_sum_allowance", _today) == 268_275.0,
+    "PA 12,570 / BRL 50,270 / LSA 268,275")
+
+# J3. THE REAL TEST OF THE LOOKUP. A fixture with two scheduled values, listed
+# deliberately OUT of date order so the sort is exercised too. If value_at
+# ignored `scheduled` entirely, every row below except the first would fail —
+# which is the point: J5 alone would not catch that.
+R.ASSUMPTIONS["_fixture"] = {
+    "value": 100.0,
+    "source": "fixture — verify.py J, never shipped as a real figure",
+    "checked": "2026-09-03",
+    "scheduled": [
+        {"from": "2028-04-06", "value": 300.0},   # later one listed FIRST
+        {"from": "2027-04-06", "value": 200.0},
+    ],
+}
+try:
+    _cases = [("2027-04-05", 100.0, "day before the first change"),
+              ("2027-04-06", 200.0, "ON the first change — `from` is inclusive"),
+              ("2027-12-31", 200.0, "between the two"),
+              ("2028-04-06", 300.0, "ON the second change"),
+              ("2030-01-01", 300.0, "after the last change")]
+    for _d, _want, _why in _cases:
+        _got = R.value_at("_fixture", _d)
+        _ok(f"fixture at {_d}", _got == _want, f"{_got:g} — {_why}")
+
+    # J4. scheduled_changes() reports both, in date order, for disclosure.
+    _ch = [c for c in R.scheduled_changes() if c["key"] == "_fixture"]
+    _ok("scheduled_changes lists both, date-ordered", len(_ch) == 2
+        and _ch[0]["from"] < _ch[1]["from"],
+        f"{len(_ch)} changes, first {_ch[0]['from'] if _ch else '-'}")
+
+    # J5. DEGENERATE, NOT A TEST (10h). A figure with NO scheduled entries
+    # returns its base value — which would also be true if the whole mechanism
+    # were deleted. Stated separately so nobody mistakes it for coverage.
+    _ok("DEGENERATE, not a test: no schedule => base value",
+        R.value_at("personal_allowance", "2099-01-01") == 12_570.0,
+        "would pass with value_at() gutted — J3 is the real check")
+finally:
+    del R.ASSUMPTIONS["_fixture"]
+
+_ok("fixture removed from ASSUMPTIONS", "_fixture" not in R.ASSUMPTIONS,
+    "the suite must not leave state behind")
+
+# J6. Errors assert on the MESSAGE, never merely on the exception (10h) —
+# 37f is the precedent: a downstream crash imitated a guard perfectly.
+def _msg(fn):
+    try:
+        fn()
+    except Exception as e:                                    # noqa: BLE001
+        return f"{type(e).__name__}: {e}"
+    return ""
+
+
+_e1 = _msg(lambda: R.value_at("no_such_figure", "2027-01-01"))
+_ok("unknown figure is refused by name", "no such assumption" in _e1, _e1[:44])
+_e2 = _msg(lambda: R.value_at("personal_allowance", "6 April 2027"))
+_ok("a non-ISO date is refused", "YYYY-MM-DD" in _e2, _e2[:44])
+_e3 = _msg(lambda: R.value_at("personal_allowance", 2027))
+_ok("an int is refused, not silently coerced", "TypeError" in _e3, _e3[:44])
+
+# J7. The expiry is DERIVED from tax_year, not hard-coded — proved by moving
+# tax_year and watching it follow. A hard-coded date would fail this row.
+_real_ty = R.ASSUMPTIONS["tax_year"]["value"]
+try:
+    R.ASSUMPTIONS["tax_year"]["value"] = "2031/32"
+    _derived = R.figures_expire_on() == _dt.date(2032, 4, 5)
+finally:
+    R.ASSUMPTIONS["tax_year"]["value"] = _real_ty
+_ok("expiry follows tax_year, so it cannot drift from it", _derived,
+    f"'2031/32' -> 2032-04-05; real: {R.figures_expire_on().isoformat()}")
+
+# J8. THE STALENESS TRIPWIRE — the mechanism's one REAL consumer, firing on a
+# real date against real figures. This row is DESIGNED to go red once the tax
+# year turns. That is not a bug in the suite: it is the whole point, and the
+# message says so. 41d — a warning that cannot fire is one switched off where
+# nobody will notice.
+_current = R.figures_are_current()
+_ok("figures are the tax year in force", _current, R.staleness_note()[:70])
+
+# J8b. AND THE TRIPWIRE CAN ACTUALLY FIRE. The row above passes today whether
+# or not the check works — a stubbed `return True` would satisfy it — so it is
+# not evidence on its own. This one asks the question at a date PAST expiry,
+# where the answer must flip. 41d: a warning that cannot fire is not a safe
+# warning, it is one switched off where nobody will notice.
+_past = _dt.date(R.figures_expire_on().year + 1, 4, 6)
+_fires = (not R.figures_are_current(_past)) and \
+         R.staleness_note(_past).startswith("STALE:")
+_ok("the tripwire fires once the tax year turns", _fires,
+    f"at {_past.isoformat()}: {R.staleness_note(_past)[:38]}")
+# And the boundary itself: in force ON the last day, stale the next morning.
+_edge = (R.figures_are_current(R.figures_expire_on())
+         and not R.figures_are_current(
+             R.figures_expire_on() + _dt.timedelta(days=1)))
+# J9. THE SAME FIGURE LIVES IN THREE FILES (10f). uk_rules now guards its own
+# staleness, but `tax_year` is also written into README.md and index.html, and
+# nothing held them together — which is exactly 10f's shape: a claim stated in
+# two places needs a test holding them, or one of them goes stale alone.
+# Resolved relative to this file, as verify_web does, so it runs anywhere.
+_root = pathlib.Path(__file__).resolve().parent.parent
+_ty = str(R.ASSUMPTIONS["tax_year"]["value"])
+for _rel in ("README.md", "public/index.html"):
+    _f = _root / _rel
+    # A missing file must FAIL, never skip: a check that quietly skips is a
+    # check that proves nothing (10i).
+    _found = _f.exists() and _ty in _f.read_text(encoding="utf-8")
+    _ok(f"{_rel} carries tax year {_ty}", _found,
+        "present" if _found else ("FILE MISSING" if not _f.exists()
+                                  else f"{_ty} not found — it has gone stale"))
+
+_ok("in force on the last day, stale the next", _edge,
+    f"{R.figures_expire_on().isoformat()} / "
+    f"{(R.figures_expire_on() + _dt.timedelta(days=1)).isoformat()}")
+if not _current:
+    print("         ^ NOT an arithmetic failure. Re-check the ASSUMPTIONS block "
+          "against GOV.UK,")
+    print("           update the values and their 'checked' dates, and move "
+          "tax_year forward.")
 
 print("\n" + "=" * 92)
 if _failures:

@@ -106,10 +106,143 @@ LIMITATIONS = [
     "both engines refuse the combination rather than approximating it.",
     "Tax bands assumed to move with inflation by default. That is NOT current "
     "policy — see freeze_bands_until in DecumulationParams.",
+    "Rules cannot CHANGE partway through a projection. This file learned "
+    "dates on 3 September 2026 — a figure can carry scheduled future values "
+    "and value_at() resolves them — but the SIMULATION is still date-free: it "
+    "works in ages and years-from-retirement, so nothing switches mid-run. "
+    "That is a deliberate scope line, not an oversight: a projection clock "
+    "would have to exist in BOTH engines. It is what 36e.2's notional-income "
+    "rule will eventually need.",
     "Full State Pension assumed if state_pension_weekly is left at default. "
     "Most people should check an actual forecast at "
     "https://www.gov.uk/check-state-pension.",
 ]
+
+
+# --------------------------------------------------------------------------
+# DATED FIGURES — scheduled changes, and staleness (26g, 36e.2, 48k)
+#
+# WHY THIS EXISTS. Three separate builds have now demanded it: April 2027
+# pension IHT (26), the notional-income rule that bites from pension credit
+# qualifying age (36e.2), and the care means-test block, which carries FIVE
+# effective dates and two different uprating rules (48k). Until now this file
+# had no notion of calendar time at all — only ages and years-from-retirement,
+# and `band_freeze_years` is a COUNT of years, not a date.
+#
+# WHAT IT DELIBERATELY DOES NOT DO. The SIMULATION stays date-free. A rule
+# cannot yet switch on partway through a projection, which is what 36e.2 will
+# eventually need; that requires a projection clock in BOTH engines and is a
+# separate, larger change. Scoped this way on purpose: this layer is Python
+# only, changes no published figure, and touches nothing in public/.
+#
+# THE DEFAULT PATH IS UNCHANGED BY CONSTRUCTION. `_a(key)` still returns
+# ["value"] and every existing call site is untouched, so no figure this
+# engine has ever produced can move. Dates are opt-in, via value_at().
+#
+# A figure may carry:
+#   "scheduled": [ {"from": "YYYY-MM-DD", "value": ..., "source": ...,
+#                   "note": ...}, ... ]
+# `from` is INCLUSIVE — the value applies on that date and after it.
+#
+# There are ZERO scheduled entries today, and that is honest rather than
+# lazy: none of the figures this engine actually READS has a known future
+# value. The State Pension is uprated every April but next year's figure is
+# not published; the care block that does carry dates is not read by the care
+# engine at all (48q). So the mechanism ships with its logic proved on
+# fixtures (verify.py J) and its one REAL consumer being the staleness
+# tripwire below — which fires on a real date, against real figures.
+# 41d is the reason that matters: a warning that cannot fire is not a safe
+# warning, it is one switched off where nobody will notice.
+# --------------------------------------------------------------------------
+
+import datetime as _dt
+
+
+def _as_date(d) -> "_dt.date":
+    """Accept a date or an ISO 'YYYY-MM-DD' string. Reject anything else
+    LOUDLY — 10h: assert on the message, never merely on the exception."""
+    if isinstance(d, _dt.date):
+        return d
+    if isinstance(d, str):
+        try:
+            return _dt.date.fromisoformat(d)
+        except ValueError as e:
+            raise ValueError(
+                f"dated figures need an ISO date 'YYYY-MM-DD', got {d!r}") from e
+    raise TypeError(f"dated figures need a date or 'YYYY-MM-DD' string, "
+                    f"got {type(d).__name__}")
+
+
+def value_at(key: str, on):
+    """
+    The value of `key` in force on date `on`.
+
+    With no scheduled changes this returns exactly what _a(key) returns, which
+    is why adopting it cannot move a number. Scheduled entries are applied in
+    date order and the LAST one whose `from` has arrived wins.
+    """
+    if key not in ASSUMPTIONS:
+        raise KeyError(f"no such assumption: {key!r}")
+    on = _as_date(on)
+    entry = ASSUMPTIONS[key]
+    value = entry["value"]
+    for change in sorted(entry.get("scheduled", []),
+                         key=lambda c: _as_date(c["from"])):
+        if _as_date(change["from"]) <= on:
+            value = change["value"]
+    return value
+
+
+def scheduled_changes(after=None) -> list:
+    """
+    Every scheduled change this file knows about, in date order — the
+    disclosure half of design rule 5. Returns [] today; see the note above.
+    """
+    out = []
+    for key, entry in ASSUMPTIONS.items():
+        for change in entry.get("scheduled", []):
+            when = _as_date(change["from"])
+            if after is not None and when <= _as_date(after):
+                continue
+            out.append({"key": key, "from": when, "value": change["value"],
+                        "source": change.get("source", entry.get("source")),
+                        "note": change.get("note", "")})
+    return sorted(out, key=lambda c: (c["from"], c["key"]))
+
+
+def figures_expire_on() -> "_dt.date":
+    """
+    The last day the block above is in force, DERIVED from the tax_year
+    assumption rather than hard-coded, so it cannot drift away from it.
+    '2026/27' -> 5 April 2027.
+    """
+    label = str(_a("tax_year"))
+    try:
+        start = int(label.split("/")[0])
+    except (ValueError, IndexError) as e:
+        raise ValueError(
+            f"tax_year must look like '2026/27' to derive an expiry, "
+            f"got {label!r}") from e
+    return _dt.date(start + 1, 4, 5)
+
+
+def figures_are_current(on=None) -> bool:
+    """True while the block above is the tax year in force."""
+    on = _dt.date.today() if on is None else _as_date(on)
+    return on <= figures_expire_on()
+
+
+def staleness_note(on=None) -> str:
+    """One line, for humans and for the test that fails when it goes stale."""
+    on = _dt.date.today() if on is None else _as_date(on)
+    end = figures_expire_on()
+    if on <= end:
+        return (f"figures are for tax year {_a('tax_year')}, in force until "
+                f"{end.isoformat()}")
+    return (f"STALE: these figures are for tax year {_a('tax_year')}, which "
+            f"ended {end.isoformat()}. The arithmetic in this file is "
+            f"unaffected; the FIGURES need re-checking against GOV.UK and the "
+            f"'checked' dates updating.")
 
 
 def _a(key: str):
@@ -359,6 +492,17 @@ def describe_assumptions() -> str:
         if "note" in v:
             lines.append(f"  {'':<24} note: {v['note']}")
         lines.append(f"  {'':<24} src:  {v['source']}")
+    lines += ["", staleness_note()]
+    changes = scheduled_changes()
+    if changes:
+        lines += ["", "SCHEDULED CHANGES:"]
+        for c in changes:
+            lines.append(f"  {c['from'].isoformat()}  {c['key']} -> {c['value']}")
+            if c["note"]:
+                lines.append(f"  {'':<12}  {c['note']}")
+    else:
+        lines += ["", "SCHEDULED CHANGES: none recorded. See the dated-figures "
+                  "note above for why that is honest rather than empty."]
     lines += ["", "NOT MODELLED:"]
     lines += [f"  - {x}" for x in LIMITATIONS]
     return "\n".join(lines)
