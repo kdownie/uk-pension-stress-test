@@ -93,6 +93,14 @@ LIMITATIONS = [
     "No MPAA, annual allowance or taper — this is a decumulation model only.",
     "No DB pensions, annuities, or death benefits.",
     "No pension IHT treatment.",
+    "No care costs, and no care means test. The charging rules are the "
+    "opposite way round from what people expect — a pension fund is "
+    "DISREGARDED as capital (Charging Regs 2014 Sch 2 para 21) while notional "
+    "income is imputed on it (Statutory Guidance Annex C) — so which pot is "
+    "spent first changes what a care event costs. Measured and published on "
+    "findings.html section 11; not modelled by either engine. Added "
+    "2026-09-03: index.html listed care costs as unmodelled from the start "
+    "and this list did not mention them at all.",
     "Within a year, when retained tax-free cash covers part of the income, "
     "the taxable withdrawal is scaled linearly rather than re-grossed exactly. "
     "Exact when the cash covers none or all of the need; a simplification in "
