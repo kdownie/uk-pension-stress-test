@@ -536,6 +536,51 @@ inflation assumption most depends on.
 
 ---
 
+## 13. An undrawn pension is not hidden from the care means test
+
+Published as section 11 of `findings.html`, 3 September 2026.
+
+A pension fund **is** disregarded as capital — Care and Support (Charging and
+Assessment of Resources) Regulations 2014, Schedule 2, paragraph 21. ISAs, cash
+and Premium Bonds count in full. But the Care and Support Statutory Guidance
+directs a local authority to impute **notional income** on an undrawn pot at the
+maximum income available under an annuity, and where income is being drawn the
+assessment takes **the higher of the two** — not the sum, and not the difference.
+
+**The size of it.** On the GAD drawdown table in force from 1 September 2025, a
+person aged 85 or over at a 4.5% gilt yield has a basis amount of £150 per
+£1,000 of fund — 15% of the pot a year, or about £30,000 on a £200,000 pot. The
+published worked example in the same document is for a 60-year-old and gives £62
+per £1,000; at the ages when residential care starts the figure is more than
+double it.
+
+**So the two halves pull opposite ways.** Spending an ISA and leaving the pension
+reduces assessed capital and raises imputed income; spending the pension does the
+reverse. No order of withdrawal is out of reach of both.
+
+Measured on £300,000 of pension beside a £100,000 ISA, £24,000 net from 60,
+deterministic at 3% real, every case checked not to deplete, position at 85:
+
+| Order money is drawn in | Assessed capital | Imputed income | Lifetime tax | Three years of care |
+|---|---:|---:|---:|---:|
+| Tax-free cash, then ISA, then pension | £0 | £27,135 | £73,436 | £97,829 |
+| Pension up to the personal allowance first | £0 | £33,471 | £42,929 | £114,130 |
+| Every pool pro rata | £63,206 | £20,921 | £44,397 | £125,314 |
+| Pension first | £178,441 | £0 | £33,671 | £203,112 |
+
+Spread: **£39,764** of lifetime tax against **£105,283** on three years of care,
+running the other way. The order that pays the most tax pays the least for care.
+
+**And above roughly £350,000 of remaining pension it is worth nothing.** Once
+imputed income alone reaches the fee the household pays full cost whatever its
+capital looks like: (£67,704 − £12,548) ÷ 0.150 = **£367,709**. The GAD factor
+moves with gilt yields, so it is a band — about £340,000 to £395,000.
+
+**Not modelled by either engine.** These figures come from running the engine
+directly. England only; the fee is a self-funder rate (councils' median is £968
+a week against £1,302). Nobody publishes length of stay in a form this could
+use, so three years is an illustration rather than an expectation.
+
 ## Sources
 
 - W. P. Bengen, "Determining Withdrawal Rates Using Historical Data",
