@@ -19,55 +19,256 @@
 <meta name="twitter:title" content="UK pension stress test">
 <meta name="twitter:description" content="Free and independent. Every assumption visible and editable. Runs entirely in your browser — no data collected.">
 <meta name="twitter:image" content="https://pensionstresstest.co.uk/og.png">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta property="og:site_name" content="Pension Stress Test">
 <meta name="twitter:image:alt" content="UK pension stress test — of 20,000 simulated runs, 35 in 100 funded a £30,000 income from a £500,000 pot to age 95; half were dry by 87.">
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "UK pension stress test",
-  "url": "https://pensionstresstest.co.uk/",
-  "description": "A free, independent UK pension drawdown stress test. Every assumption is visible and editable. Runs entirely in the browser; no data is collected.",
-  "operatingSystem": "Web browser",
-  "applicationCategory": "FinanceApplication",
-  "isAccessibleForFree": true,
-  "inLanguage": "en-GB"
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
+  "@graph": [
     {
-      "@type": "Question",
-      "name": "What is a pension stress test?",
-      "acceptedAnswer": {"@type": "Answer", "text": "A simulation that runs many possible futures for a pension pot in drawdown, year by year, to show how often the income lasts to your chosen age and what happens when it does not."}
+      "@type": "Organization",
+      "@id": "https://pensionstresstest.co.uk/#publisher",
+      "name": "Pension Stress Test",
+      "url": "https://pensionstresstest.co.uk/",
+      "description": "An independent, non-commercial project. Not authorised or regulated by the Financial Conduct Authority.",
+      "sameAs": [
+        "https://github.com/kdownie/uk-pension-stress-test"
+      ]
     },
     {
-      "@type": "Question",
-      "name": "How long will my pension last?",
-      "acceptedAnswer": {"@type": "Answer", "text": "It depends on the pot size, income target, returns, tax and inflation. Enter your figures to see the share of simulations that fund the full income to your end age."}
+      "@type": "WebSite",
+      "@id": "https://pensionstresstest.co.uk/#website",
+      "url": "https://pensionstresstest.co.uk/",
+      "name": "UK pension stress test",
+      "description": "A free, independent UK pension drawdown stress test. Every assumption is visible and editable. Runs entirely in the browser; no data is collected.",
+      "inLanguage": "en-GB",
+      "publisher": {
+        "@id": "https://pensionstresstest.co.uk/#publisher"
+      },
+      "copyrightHolder": {
+        "@id": "https://pensionstresstest.co.uk/#publisher"
+      }
     },
     {
-      "@type": "Question",
-      "name": "What return does it assume?",
-      "acceptedAnswer": {"@type": "Answer", "text": "By default the FCA's projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. The Handbook does not prescribe that 5% — it is the highest intermediate rate a firm may use for a personal pension, and the firm is expected to justify it against the actual investments. The lower and higher cases, 2% and 8%, are in the dropdown. You can also set your own."}
+      "@type": "ImageObject",
+      "@id": "https://pensionstresstest.co.uk/#primaryimage",
+      "url": "https://pensionstresstest.co.uk/og.png",
+      "contentUrl": "https://pensionstresstest.co.uk/og.png",
+      "width": 1200,
+      "height": 630,
+      "caption": "UK pension stress test — of 20,000 simulated runs, 35 in 100 funded a £30,000 income from a £500,000 pot to age 95; half were dry by 87."
     },
     {
-      "@type": "Question",
-      "name": "Does it model UK income tax?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Yes, for England/Wales/NI and Scotland. The basic-rate band is stacked on top of whatever personal allowance survives the £100,000 taper, which most calculators get wrong."}
+      "@type": "BreadcrumbList",
+      "@id": "https://pensionstresstest.co.uk/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "UK pension stress test",
+          "item": "https://pensionstresstest.co.uk/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "What we found",
+          "item": "https://pensionstresstest.co.uk/findings.html"
+        }
+      ]
     },
     {
-      "@type": "Question",
-      "name": "Does it model a couple?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Yes. Two pots, two State Pensions and two personal allowances, with each year's withdrawal split between the pots to minimise the household tax bill."}
+      "@type": "WebPage",
+      "@id": "https://pensionstresstest.co.uk/#webpage",
+      "url": "https://pensionstresstest.co.uk/",
+      "name": "UK pension stress test — open, transparent, no data collected",
+      "description": "A free, independent UK pension drawdown stress test. Every assumption visible and editable. Runs entirely in your browser — nothing is sent anywhere.",
+      "isPartOf": {
+        "@id": "https://pensionstresstest.co.uk/#website"
+      },
+      "inLanguage": "en-GB",
+      "datePublished": "2026-08-16",
+      "dateModified": "2026-09-03",
+      "primaryImageOfPage": {
+        "@id": "https://pensionstresstest.co.uk/#primaryimage"
+      },
+      "breadcrumb": {
+        "@id": "https://pensionstresstest.co.uk/#breadcrumb"
+      },
+      "mainEntity": {
+        "@id": "https://pensionstresstest.co.uk/#app"
+      },
+      "about": {
+        "@id": "https://pensionstresstest.co.uk/#e-drawdown"
+      },
+      "mentions": [
+        {
+          "@id": "https://pensionstresstest.co.uk/#e-ukpension"
+        },
+        {
+          "@id": "https://pensionstresstest.co.uk/#e-statepen"
+        },
+        {
+          "@id": "https://pensionstresstest.co.uk/#e-fca"
+        },
+        {
+          "@id": "https://pensionstresstest.co.uk/#e-montecarlo"
+        },
+        {
+          "@id": "https://pensionstresstest.co.uk/#e-isa"
+        }
+      ],
+      "isAccessibleForFree": true,
+      "significantLink": [
+        "https://pensionstresstest.co.uk/findings.html"
+      ]
     },
     {
-      "@type": "Question",
-      "name": "Is this financial advice?",
-      "acceptedAnswer": {"@type": "Answer", "text": "No. It is not authorised or regulated by the FCA, gives no recommendation, and names no pension product, fund or provider."}
+      "@type": [
+        "WebApplication",
+        "SoftwareApplication"
+      ],
+      "@id": "https://pensionstresstest.co.uk/#app",
+      "name": "UK pension stress test",
+      "url": "https://pensionstresstest.co.uk/",
+      "description": "A free, independent UK pension drawdown stress test. Every assumption is visible and editable. Runs entirely in the browser; no data is collected.",
+      "applicationCategory": "FinanceApplication",
+      "applicationSubCategory": "Pension drawdown calculator",
+      "operatingSystem": "Web browser",
+      "browserRequirements": "Requires JavaScript.",
+      "inLanguage": "en-GB",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "GBP",
+        "availability": "https://schema.org/InStock"
+      },
+      "featureList": [
+        "Monte Carlo simulation of a drawdown pension, year by year to a chosen end age",
+        "UK income tax for England, Wales and Northern Ireland and for Scotland, including the £100,000 personal allowance taper",
+        "State Pension, single or couple, with two pots and two personal allowances",
+        "Tax-free cash taken as a lump sum or in stages",
+        "Every assumption visible and editable, including return, volatility and inflation",
+        "Runs entirely in the browser; no account, no cookies, no data collected"
+      ],
+      "publisher": {
+        "@id": "https://pensionstresstest.co.uk/#publisher"
+      },
+      "image": {
+        "@id": "https://pensionstresstest.co.uk/#primaryimage"
+      },
+      "about": {
+        "@id": "https://pensionstresstest.co.uk/#e-drawdown"
+      },
+      "disambiguatingDescription": "An information tool, not financial advice. Not authorised or regulated by the Financial Conduct Authority; it gives no recommendation and names no pension product, fund or provider."
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://pensionstresstest.co.uk/#faq",
+      "isPartOf": {
+        "@id": "https://pensionstresstest.co.uk/#webpage"
+      },
+      "inLanguage": "en-GB",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is a pension stress test?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A simulation that runs many possible futures for a pension pot in drawdown, year by year, to show how often the income lasts to your chosen age and what happens when it does not."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long will my pension last?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on the pot size, income target, returns, tax and inflation. Enter your figures to see the share of simulations that fund the full income to your end age."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What return does it assume?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "By default the FCA's projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. The Handbook does not prescribe that 5% — it is the highest intermediate rate a firm may use for a personal pension, and the firm is expected to justify it against the actual investments. The lower and higher cases, 2% and 8%, are in the dropdown. You can also set your own."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it model UK income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, for England/Wales/NI and Scotland. The basic-rate band is stacked on top of whatever personal allowance survives the £100,000 taper, which most calculators get wrong."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it model a couple?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Two pots, two State Pensions and two personal allowances, with each year's withdrawal split between the pots to minimise the household tax bill."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this financial advice?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is not authorised or regulated by the FCA, gives no recommendation, and names no pension product, fund or provider."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://pensionstresstest.co.uk/#e-drawdown",
+      "name": "Pension drawdown",
+      "sameAs": [
+        "https://en.wikipedia.org/wiki/Income_drawdown"
+      ]
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://pensionstresstest.co.uk/#e-ukpension",
+      "name": "Pensions in the United Kingdom",
+      "sameAs": [
+        "https://en.wikipedia.org/wiki/Pensions_in_the_United_Kingdom"
+      ]
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://pensionstresstest.co.uk/#e-statepen",
+      "name": "State Pension (United Kingdom)",
+      "sameAs": [
+        "https://en.wikipedia.org/wiki/State_Pension_(United_Kingdom)"
+      ]
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://pensionstresstest.co.uk/#e-fca",
+      "name": "Financial Conduct Authority",
+      "sameAs": [
+        "https://en.wikipedia.org/wiki/Financial_Conduct_Authority"
+      ]
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://pensionstresstest.co.uk/#e-montecarlo",
+      "name": "Monte Carlo method",
+      "sameAs": [
+        "https://en.wikipedia.org/wiki/Monte_Carlo_method"
+      ]
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://pensionstresstest.co.uk/#e-isa",
+      "name": "Individual savings account",
+      "sameAs": [
+        "https://en.wikipedia.org/wiki/Individual_savings_account"
+      ]
     }
   ]
 }
