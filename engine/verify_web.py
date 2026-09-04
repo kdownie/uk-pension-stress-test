@@ -674,12 +674,17 @@ async def main():
         if not ok:
             fails.append("triple-lock figure differs between the two pages")
 
-        # The href may or may not carry the .html extension — Cloudflare
-        # Pages serves /findings and 308s /findings.html to it, so the
-        # site declares the extensionless form. What must hold is that
-        # index.html links to the findings page anchored at s10 and that
-        # the anchor exists. Written against the URL SHAPE it was, this
-        # row went red for a spelling change — 10h. 4 September 2026.
+        # The href may or may not carry the .html extension. OBSERVED on the
+        # live site, 4 September 2026: /findings serves 200 and /findings.html
+        # redirects to it. The status code was NOT read — a cross-origin fetch
+        # returns `opaqueredirect`, which hides it — so it is not recorded here.
+        # The deploy is Workers Static Assets (wrangler.jsonc `assets.directory`),
+        # not Pages. An earlier version of this comment asserted "Cloudflare
+        # Pages" and "308"; neither was measured. 10e.
+        #
+        # What must hold is that index.html links to the findings page anchored
+        # at s10 and that the anchor exists. Written against the URL SHAPE it
+        # was, this row went red for a spelling change — 10h.
         ok = (re.search(r'href="/?findings(?:\.html)?#s10"', _idx) is not None
               and 'id="s10"' in _fnd)
         print(f"  {'PASS' if ok else 'FAIL'}  "
@@ -687,6 +692,23 @@ async def main():
               f"{'linked' if ok else 'BROKEN ANCHOR'}")
         if not ok:
             fails.append("index.html link to findings section 10 is broken")
+
+        # F9d.2. Loosening the row above stopped anything from asserting WHICH
+        # spelling the site declares. Canonical, sitemap and every internal link
+        # must agree, or the site tells a crawler two different things about the
+        # same page. Added 4 September 2026 after an outside review pointed out
+        # that the loosening had left a hole where a check used to be.
+        _map = (_pub / "sitemap.xml").read_text(encoding="utf-8")
+        _canon = re.search(r'<link rel="canonical" href="([^"]+)"', _fnd).group(1)
+        _locs = re.findall(r"<loc>([^<]+)</loc>", _map)
+        ok = (_canon in _locs
+              and "pensionstresstest.co.uk/findings.html" not in _idx + _fnd + _map
+              and 'href="/findings.html' not in _idx + _fnd)
+        print(f"  {'PASS' if ok else 'FAIL'}  "
+              f"{'canonical, sitemap and links name one URL':<52}"
+              f"{_canon if ok else 'DISAGREE'}")
+        if not ok:
+            fails.append("findings.html is declared under more than one URL")
 
         # F9e. The Open Government Licence attribution is a CONDITION of using
         # the data, not a nicety. It must be on the page that publishes it.
