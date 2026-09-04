@@ -275,7 +275,7 @@
 :root{
   color-scheme: light;
   --surface-1:#fcfcfb; --plane:#f9f9f7; --surface-2:#f2f1ed;
-  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#5f5e58;
   --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
   --s400:#3987e5; --s450:#2a78d6; --s550:#1c5cab; --s650:#104281;
   --s100:#cde2fb; --warn:#eb6834; --good:#006300; --bad:#e34948;
@@ -284,19 +284,19 @@
   :root:where(:not([data-theme=light])){
     color-scheme: dark;
     --surface-1:#1a1a19; --plane:#0d0d0d; --surface-2:#232320;
-    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#9a9891;
     --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
     --s400:#2a78d6; --s450:#3987e5; --s550:#86b6ef; --s650:#b7d3f6;
-    --s100:#184f95; --warn:#d95926; --good:#0ca30c; --bad:#e66767;
+    --s100:#143d70; --warn:#d95926; --good:#0ca30c; --bad:#e66767;
   }
 }
 :root[data-theme=dark]{
   color-scheme: dark;
   --surface-1:#1a1a19; --plane:#0d0d0d; --surface-2:#232320;
-  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --ink:#fff; --ink-2:#c3c2b7; --muted:#9a9891;
   --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
   --s400:#2a78d6; --s450:#3987e5; --s550:#86b6ef; --s650:#b7d3f6;
-  --s100:#184f95; --warn:#d95926; --good:#0ca30c; --bad:#e66767;
+  --s100:#143d70; --warn:#d95926; --good:#0ca30c; --bad:#e66767;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--plane);color:var(--ink);
@@ -324,7 +324,26 @@ a{color:var(--s550);text-decoration:none;border-bottom:1px solid var(--border)}
 a:hover{border-bottom-color:var(--s550)}
 .lede{font-size:17px;line-height:1.5;color:var(--ink)}
 table{border-collapse:collapse;width:100%;margin:18px 0;font-size:14px}
-caption{caption-side:top;text-align:left;color:var(--muted);font-size:13px;padding-bottom:7px}
+/* A table wider than the screen used to push the whole PAGE sideways: at 390px
+   the document scrolled to 425px and the last column of the widest table — the
+   one its section is about — was simply off the edge. The table now scrolls
+   inside its own box. The caption is part of the table, so it would scroll away
+   with it; pinning it to the left and capping its width keeps it readable while
+   the columns move underneath. 4 September 2026. */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:18px 0}
+.tw table{margin:0;min-width:max-content}
+.tw td:first-child,.tw th:first-child{min-width:13em}
+caption{caption-side:top;text-align:left;color:var(--muted);font-size:13px;padding-bottom:7px;
+  position:sticky;left:0;max-width:min(70ch,calc(100vw - 28px))}
+td.n,th.n{white-space:nowrap}
+.toc{background:var(--surface-1);border:1px solid var(--border);border-radius:11px;
+  padding:15px 18px;margin:20px 0 8px}
+.toc h2{margin:0 0 9px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--muted);font-weight:600}
+.toc ol{margin:0;padding:0;list-style:none;columns:2;column-gap:30px;font-size:14.5px;line-height:1.5}
+.toc li{break-inside:avoid;padding:4px 0;display:flex;gap:10px}
+.toc li .n{color:var(--muted);font-variant-numeric:tabular-nums;min-width:1.5em;text-align:right}
+@media(max-width:640px){.toc ol{columns:1}}
 th,td{padding:7px 10px;border-bottom:1px solid var(--grid);text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
@@ -332,7 +351,7 @@ tbody tr:last-child td{border-bottom:1px solid var(--axis)}
 .big{color:var(--ink);font-weight:700}
 .pull{margin:22px 0;padding:14px 16px;background:var(--surface-1);border:1px solid var(--border);
   border-left:3px solid var(--s450);border-radius:9px;color:var(--ink);font-size:15.5px}
-.src{color:var(--muted);font-size:13px;margin:10px 0}
+.src{color:var(--muted);font-size:13.5px;margin:10px 0}
 pre{background:var(--surface-1);border:1px solid var(--border);border-radius:9px;
   padding:13px 15px;overflow-x:auto;font-size:13px;color:var(--ink-2);line-height:1.5}
 hr{border:0;border-top:1px solid var(--grid);margin:40px 0}
@@ -373,6 +392,24 @@ answer further than any other choice on this page.</p>
 <p>Along the way the most famous number in retirement planning fell over. That
 seems the right place to start.</p>
 
+<nav class="toc" aria-label="Contents">
+  <h2>In this write-up</h2>
+  <ol>
+    <li><span class="n">1</span><a href="#s1">The 4% rule is a fact about American data</a></li>
+    <li><span class="n">2</span><a href="#s2">&ldquo;A 5% return&rdquo; is not yet a number</a></li>
+    <li><span class="n">3</span><a href="#s3">The decisions that move the answer are not the ones people model</a></li>
+    <li><span class="n">4</span><a href="#s4">The tax-free cash decision is the largest single choice on the page</a></li>
+    <li><span class="n">5</span><a href="#s5">Two of everything</a></li>
+    <li><span class="n">6</span><a href="#s6">A bug in how this is usually built</a></li>
+    <li><span class="n">7</span><a href="#s7">Two bugs in ours, and what they cost</a></li>
+    <li><span class="n">8</span><a href="#s8">What isn't modelled</a></li>
+    <li><span class="n">9</span><a href="#s9">The pension and inheritance tax, from April 2027</a></li>
+    <li><span class="n">10</span><a href="#s10">The triple lock has been worth about 1.3% a year &mdash; and the 2.5% floor is not why</a></li>
+    <li><span class="n">11</span><a href="#s11">An undrawn pension is not hidden from the care means test</a></li>
+    <li><span class="n">12</span><a href="#s12">How to check any of this</a></li>
+  </ol>
+</nav>
+
 <h2 id="s1"><span class="num">1</span>The 4% rule is a fact about American data</h2>
 
 <p>The rule is familiar even to people who have never read where it came from:
@@ -400,6 +437,7 @@ the Dimson–Marsh–Staunton dataset, covering 1900 to 2008. He allowed each
 country the <em>best possible</em> asset allocation with a century of hindsight,
 which is generous in a way no real retiree could be.</p>
 
+<div class="tw">
 <table>
   <caption>Highest withdrawal rate that would have survived 30 years in every historical window, by country</caption>
   <thead><tr><th>Country</th><th class="n">Rate</th></tr></thead>
@@ -411,6 +449,7 @@ which is generous in a way no real retiree could be.</p>
     <tr><td><strong>United Kingdom</strong></td><td class="n"><span class="big">3.77%</span></td></tr>
   </tbody>
 </table>
+</div>
 
 <p>Four countries out of seventeen reached 4%. The United States was the fourth
 of them, and only just. A British retiree, drawing on British market history,
@@ -499,6 +538,7 @@ age 60 to 95. That is the scenario the calculator loads with: averaged over
 three random seeds it funds the full income in <strong>35.7%</strong> of runs,
 and the single seed the front page uses reports 35%.</p>
 
+<div class="tw">
 <table>
   <caption>Effect on the share of runs that funded the full income to 95.
     Baseline 35.7%. £500,000 pot, £30,000 net, ages 60–95, 2.94% real return,
@@ -517,6 +557,7 @@ and the single seed the front page uses reports 35%.</p>
     <tr><td>Swapping the whole stochastic engine for a simpler one <span style="color:var(--muted)">(different basis — see below)</span></td><td class="n"><span class="big">+2.8 pp</span></td></tr>
   </tbody>
 </table>
+</div>
 
 <p class="src">The last row is a matched pair rather than a change to the
 baseline: the same scenario run through a historical-style block bootstrap and
@@ -573,6 +614,7 @@ answer is missing the largest term.</p>
 <p>Same £800,000, same £40,000 net target, same ages. The only difference is
 whether it sits in one name or two.</p>
 
+<div class="tw">
 <table>
   <caption>£800,000 total, £40,000 a year after tax, ages 60–95. Same
     assumptions as §3: 2.94% real return, 15% volatility, 20,000 runs, averaged
@@ -585,6 +627,7 @@ whether it sits in one name or two.</p>
     <tr><td>One person, £800,000</td><td class="n"><span class="big">43.6%</span></td><td class="n">£205,700</td></tr>
   </tbody>
 </table>
+</div>
 
 <p>Nearly double the success rate and <strong>£94,000 less tax</strong> on the
 same delivered income, from nothing but having two of everything the tax system
@@ -609,6 +652,7 @@ it is.</p>
 isn't — because the survivor spends about a third less. What actually happens is
 quieter and worse.</p>
 
+<div class="tw">
 <table>
   <caption>Gross withdrawal needed from the pots, before and after one death</caption>
   <thead><tr><th></th><th class="n">Needed from the pots</th></tr></thead>
@@ -617,6 +661,7 @@ quieter and worse.</p>
     <tr><td>Survivor, spending 67% of that</td><td class="n">£17,810</td></tr>
   </tbody>
 </table>
+</div>
 
 <p>Spending falls 33%. The withdrawal falls <strong>4%</strong>.</p>
 
@@ -789,6 +834,7 @@ pot as fully taxable, which is right after 75 and too cautious before it — see
 the whole pot. On a death at 75 or over, in an estate above the nil-rate band,
 what reaches the beneficiary is:</p>
 
+<div class="tw">
 <table>
   <caption>What reaches the beneficiary from an inherited pension pot, in an
     estate above the nil-rate band, from 6 April 2027. Inheritance tax at 40%,
@@ -801,6 +847,7 @@ what reaches the beneficiary is:</p>
     <tr><td>Additional rate (45%)</td><td class="n">33%</td></tr>
   </tbody>
 </table>
+</div>
 
 <p class="src">40% inheritance tax, then income tax on the remainder. The widely
 quoted 64% combined rate is the higher-rate row, and it applies only where the
@@ -824,6 +871,7 @@ average earnings growth, or 2.5%. So the growth it delivers <em>above</em>
 inflation is <code>max(0, real earnings growth, 2.5% &minus; inflation)</code>.
 Run that formula over ONS data for 2001&ndash;2025:</p>
 
+<div class="tw">
 <table>
   <caption>Growth above inflation the triple lock formula would have delivered,
     2001&ndash;2025, computed two ways. Method A deflates earnings by CPIH, as ONS
@@ -835,6 +883,7 @@ Run that formula over ONS data for 2001&ndash;2025:</p>
     <tr><td>B &mdash; nominal earnings less CPI</td><td class="n">1.41%</td><td class="n">1.60%</td><td class="n">3.91%</td></tr>
   </tbody>
 </table>
+</div>
 
 <p>The two differ by <strong>0.09 percentage points</strong> on the mean and agree
 exactly on the median, so the answer does not depend on which price index is
@@ -851,6 +900,7 @@ is roughly double that rate.</p>
 leg that can raise the State Pension when both prices and wages are flat. Over
 these 25 years it was rarely the binding leg.</p>
 
+<div class="tw">
 <table>
   <caption>Which leg of the triple lock set the uprating, 2001&ndash;2025, method B.</caption>
   <thead><tr><th>Binding leg</th><th class="n">Years</th></tr></thead>
@@ -860,6 +910,7 @@ these 25 years it was rarely the binding leg.</p>
     <tr><td>The 2.5% floor</td><td class="n">5</td></tr>
   </tbody>
 </table>
+</div>
 
 <p>Earnings did the work. In a third of years the lock delivered nothing above
 inflation, because prices were rising fastest &mdash; which is the same mechanism
@@ -925,6 +976,7 @@ assessment.</strong></p>
 <p>Running the engine on a &pound;300,000 pension beside a &pound;100,000 ISA,
 &pound;24,000 net a year from 60, and looking at the position at 85:</p>
 
+<div class="tw">
 <table>
   <caption>Deterministic, 3% real, both tax-free pools invested, every case
     checked not to run dry. &ldquo;Cost of three years of care&rdquo; is the
@@ -952,6 +1004,7 @@ assessment.</strong></p>
         <td class="n">&pound;33,671</td><td class="n">&pound;203,112</td></tr>
   </tbody>
 </table>
+</div>
 
 <p class="src">Spread across the four: &pound;39,764 of lifetime income tax, and
 &pound;105,283 on three years of care &mdash; running the other way. The order

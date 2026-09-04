@@ -246,7 +246,8 @@
 :root{
   color-scheme: light;
   --surface-1:#fcfcfb; --plane:#f9f9f7; --surface-2:#f2f1ed;
-  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#5f5e58;
+  --accent:#104281;   /* the three headline figures. ONE colour, never varying with the value. */
   --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
   --s400:#3987e5; --s450:#2a78d6; --s550:#1c5cab; --s650:#104281;
   --s100:#cde2fb; --s200:#9ec5f4; --s300:#6da7ec;
@@ -256,20 +257,22 @@
   :root:where(:not([data-theme=light])){
     color-scheme: dark;
     --surface-1:#1a1a19; --plane:#0d0d0d; --surface-2:#232320;
-    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#9a9891;
+    --accent:#b7d3f6;
     --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
     --s400:#2a78d6; --s450:#3987e5; --s550:#86b6ef; --s650:#b7d3f6;
-    --s100:#184f95; --s200:#1c5cab; --s300:#256abf;
+    --s100:#143d70; --s200:#1c5cab; --s300:#2a6fc4;
     --warn:#d95926; --good:#0ca30c; --bad:#e66767;
   }
 }
 :root[data-theme=dark]{
   color-scheme: dark;
   --surface-1:#1a1a19; --plane:#0d0d0d; --surface-2:#232320;
-  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --ink:#fff; --ink-2:#c3c2b7; --muted:#9a9891;
+    --accent:#b7d3f6;
   --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
   --s400:#2a78d6; --s450:#3987e5; --s550:#86b6ef; --s650:#b7d3f6;
-  --s100:#184f95; --s200:#1c5cab; --s300:#256abf;
+  --s100:#143d70; --s200:#1c5cab; --s300:#2a6fc4;
   --warn:#d95926; --good:#0ca30c; --bad:#e66767;
 }
 *{box-sizing:border-box}
@@ -280,7 +283,8 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:16p
 h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
 .tag{color:var(--ink-2);margin:0;font-size:14.5px;max-width:62ch}
 button.ghost{background:none;border:1px solid var(--border);color:var(--ink-2);
-  border-radius:7px;padding:6px 11px;cursor:pointer;font-size:13px}
+  border-radius:7px;padding:11px 15px;cursor:pointer;font-size:14px;
+  font-family:inherit;min-height:44px}
 button.ghost:hover{background:var(--surface-2)}
 .notice{margin:22px 0 26px;padding:13px 15px;border-radius:9px;background:var(--surface-1);
   border:1px solid var(--border);border-left:3px solid var(--warn);
@@ -301,41 +305,71 @@ button.ghost:hover{background:var(--surface-2)}
 .cols{display:grid;grid-template-columns:308px minmax(0,1fr);
   column-gap:26px;row-gap:16px;align-items:start}
 #situationPanel{grid-column:1;grid-row:1}
-#assumpPanel   {grid-column:1;grid-row:2}
-#results       {grid-column:2;grid-row:1/span 2}
+#results       {grid-column:2;grid-row:1}
+#assumpPanel   {grid-column:1/-1;grid-row:2}
 @media(max-width:860px){
   .cols{grid-template-columns:minmax(0,1fr);gap:16px}
   #situationPanel,#results,#assumpPanel{grid-area:auto}
 }
 .panel{background:var(--surface-1);border:1px solid var(--border);border-radius:11px;padding:17px}
-.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;
-  color:var(--muted);margin:0 0 13px;font-weight:600}
+.panel h2{font-size:17px;color:var(--ink);margin:0 0 12px;font-weight:600;
+  letter-spacing:-.01em}
 .panel h2 + .hint{margin-top:-8px}
-.hint{font-size:12.5px;color:var(--muted);margin:0 0 13px;line-height:1.45}
+.hint{font-size:13.5px;color:var(--muted);margin:0 0 13px;line-height:1.45}
 label{display:block;margin-bottom:12px;font-size:13.5px;color:var(--ink-2)}
 [hidden]{display:none !important}   /* display:block above would otherwise win */
 label span.lbl{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 label .val{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-input[type=number],select{width:100%;padding:7px 9px;border-radius:7px;font-size:14px;
+input[type=number],select{width:100%;padding:9px 10px;border-radius:7px;font-size:15px;
+  min-height:42px;
   border:1px solid var(--border);background:var(--plane);color:var(--ink);
   font-variant-numeric:tabular-nums}
-input[type=range]{width:100%;accent-color:var(--s450);margin:2px 0 0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;
+  accent-color:var(--s450);margin:2px 0 0;height:32px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--grid)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:24px;height:24px;border-radius:50%;background:var(--s450);
+  border:2px solid var(--surface-1);margin-top:-9px;box-shadow:0 0 0 1px var(--border)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--grid)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
+  background:var(--s450);border:2px solid var(--surface-1)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .chk{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--ink-2);margin-bottom:11px}
-.chk input{margin-top:3px;accent-color:var(--s450)}
+.chk input{margin-top:2px;accent-color:var(--s450);width:20px;height:20px;flex:none}
 hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+/* A named divider. The rules between groups of controls were unlabelled, so a
+   panel of eighteen inputs read as one undifferentiated list. Same rule, with
+   the group's name on it. */
+.panel h3{font-size:12px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--muted);font-weight:600;margin:22px 0 12px;
+  padding-top:17px;border-top:1px solid var(--border)}
+.panel h3.g1{margin-top:6px;padding-top:0;border-top:none}
+/* The assumptions used to sit in the 308px left column, running about 1,100px
+   below the end of the results with an empty column beside them. Full width,
+   in named groups, they end up shorter than the results rather than longer —
+   and "here's why" lands after "here's the result" instead of beside it.
+   The grid row assignment does this without moving anything in the DOM, so
+   the phone still reads situation → results → assumptions in source order. */
+#assumpPanel .agrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+  gap:0 32px;align-items:start}
+#assumpPanel .agrid h3{margin-top:2px;padding-top:0;border-top:none}
+#resHead{margin:0 0 14px}
+#resHead h2{font-size:20px;margin:0 0 5px;font-weight:600;letter-spacing:-.015em}
+#resHead .hint{margin:0;max-width:66ch}
+#resHead .hint b{color:var(--ink);font-weight:600}
 .hero{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
 .stat{flex:1 1 168px;background:var(--surface-1);border:1px solid var(--border);
   border-radius:11px;padding:15px 17px}
-.stat .n{font-size:31px;font-weight:650;letter-spacing:-.025em;
+.stat .n{font-size:34px;font-weight:650;letter-spacing:-.025em;color:var(--accent);
   font-variant-numeric:tabular-nums;display:block;line-height:1.1}
-.stat .l{color:var(--ink-2);font-size:12.5px;margin-top:5px;display:block;line-height:1.4}
-.stat .sub{color:var(--muted);font-size:11.5px;margin-top:3px;display:block}
+.hero .stat:first-child .n{font-size:44px}
+.stat .l{color:var(--ink-2);font-size:13.5px;margin-top:5px;display:block;line-height:1.4}
+.stat .sub{color:var(--muted);font-size:12.5px;margin-top:3px;display:block}
 figure{margin:0}
 svg{display:block;width:100%;height:auto;overflow:visible}
 .axis{fill:var(--muted);font-size:11px}
 .alab{fill:var(--ink-2);font-size:12px}
-.legend{display:flex;gap:17px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin:0 0 11px}
+.legend{display:flex;gap:17px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin:0 0 11px}
 .legend span{display:inline-flex;align-items:center;gap:7px}
 .sw{width:12px;height:11px;border-radius:3px;display:inline-block}
 table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
@@ -344,18 +378,41 @@ th:first-child,td:first-child{text-align:left;color:var(--ink)}
 th{color:var(--muted);font-weight:500}
 details{margin-top:14px}
 summary{cursor:pointer;color:var(--ink-2);font-size:13px;padding:4px 0}
-.src{font-size:12.5px;color:var(--muted);line-height:1.6}
-.src a{color:var(--s450)}
+.src{font-size:13.5px;color:var(--muted);line-height:1.6}
+.src a{color:var(--s550)}
 .src code{font-size:12px}
 footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);
-  color:var(--muted);font-size:12.5px;line-height:1.6}
-footer a{color:var(--s450)}
+  color:var(--muted);font-size:13.5px;line-height:1.6}
+footer a{color:var(--s550)}
 .tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .09s;
   background:var(--ink);color:var(--surface-1);font-size:12px;padding:7px 10px;
   border-radius:7px;white-space:nowrap;z-index:40;font-variant-numeric:tabular-nums}
 .pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11.5px;
   background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border)}
 .busy{opacity:.45;transition:opacity .1s}
+
+/* The phone readout. On a phone the three figures sit about 1,750px below the
+   top and the assumptions that change them about 4,700px below, so dragging a
+   slider used to give no visible feedback at all — you changed something and
+   then scrolled a long way to find out what. This keeps the same three numbers,
+   in the same colour, on screen while any control that could move them is in
+   view. It is a mirror of the tiles, not a second opinion about them: same
+   text nodes, no threshold, no colour that varies. Phone only — on desktop the
+   figures are already beside the controls. 4 September 2026. */
+.readout{position:fixed;left:0;right:0;bottom:0;z-index:35;display:none;
+  padding:9px 14px calc(9px + env(safe-area-inset-bottom,0px));
+  background:var(--surface-1);border-top:1px solid var(--border);
+  box-shadow:0 -2px 12px rgba(0,0,0,.10)}
+.readout.on{display:block}
+.readout .in{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0 10px;align-items:center}
+.readout .k{font-size:19px;font-weight:650;letter-spacing:-.02em;color:var(--accent);
+  font-variant-numeric:tabular-nums;line-height:1.15;display:block}
+.readout .c{font-size:11.5px;color:var(--muted);line-height:1.25;display:block}
+.readout a{color:var(--s550);font-size:13px;text-decoration:none;
+  border:1px solid var(--border);border-radius:7px;padding:9px 10px;min-height:40px;
+  display:inline-flex;align-items:center}
+body.readout-on{padding-bottom:76px}
+@media(min-width:641px){.readout{display:none !important}body.readout-on{padding-bottom:0}}
 
 /* ---- phone ----------------------------------------------------------
    Reclaim horizontal space for the charts. Every pixel of page padding is
@@ -369,7 +426,9 @@ footer a{color:var(--s450)}
   h1{font-size:23px}
   .hero{gap:10px;margin-bottom:14px}
   .stat{flex:1 1 100%;padding:13px 15px}   /* full width: 2-then-1 reads as a mistake */
-  .stat .n{font-size:28px}
+  .stat .n{font-size:30px}
+  .hero .stat:first-child .n{font-size:38px}
+  input[type=number],select{font-size:16px}   /* <16px makes iOS Safari zoom on focus */
   .row2{gap:8px}
   .legend{gap:12px;font-size:12px}
   footer{margin-top:32px}
@@ -406,18 +465,17 @@ footer a{color:var(--s450)}
   <!-- ============ THE QUESTION ============ -->
     <div class="panel" id="situationPanel">
       <h2>Your situation</h2>
-      <div class="row2">
-        <label><span class="lbl">Where you live</span>
-          <select id="region">
-            <option value="ruk" selected>England / Wales / NI</option>
-            <option value="scotland">Scotland</option>
-          </select></label>
-        <label><span class="lbl">Household</span>
-          <select id="mode">
-            <option value="single" selected>Just me</option>
-            <option value="couple">A couple</option>
-          </select></label>
-      </div>
+      <label><span class="lbl">Where you live</span>
+        <select id="region">
+          <option value="ruk" selected>England / Wales / NI</option>
+          <option value="scotland">Scotland</option>
+        </select></label>
+      <label><span class="lbl">Household</span>
+        <select id="mode">
+          <option value="single" selected>Just me</option>
+          <option value="couple">A couple</option>
+        </select></label>
+      <h3 class="g1">Pot, ages and income</h3>
       <label><span class="lbl">Pension pot <span class="val" id="v_pot">£500,000</span></span>
         <input type="range" id="pot" min="50000" max="2000000" step="10000" value="500000"></label>
       <div class="row2">
@@ -430,7 +488,7 @@ footer a{color:var(--s450)}
         <span class="val" id="v_inc">£30,000</span></span>
         <input type="range" id="inc" min="5000" max="100000" step="500" value="30000"></label>
       <p class="hint">In today's money. The model increases it with inflation each year.</p>
-      <hr>
+      <h3>Other income</h3>
       <div class="row2">
         <label><span class="lbl">State Pension /yr</span>
           <input type="number" id="sp" value="12548" step="100"></label>
@@ -443,8 +501,7 @@ footer a{color:var(--s450)}
         <input type="number" id="other" value="0" step="500"></label>
 
       <div id="partner" hidden>
-        <hr>
-        <h2 style="margin-bottom:6px">Your partner</h2>
+        <h3>Your partner</h3>
         <label><span class="lbl">Their pension pot
           <span class="val" id="v_pot2">£250,000</span></span>
           <input type="range" id="pot2" min="0" max="2000000" step="10000" value="250000"></label>
@@ -463,7 +520,7 @@ footer a{color:var(--s450)}
         <p class="hint">Withdrawals are split between the two pots each year to
           keep the household's tax bill as low as possible — using both personal
           allowances before either of you pays a higher rate.</p>
-        <hr>
+        <h3>If one of you dies first</h3>
         <label><span class="lbl">Your partner dies at age
           <span class="val" id="v_death">never</span></span>
           <input type="range" id="death" min="0" max="100" step="1" value="0"></label>
@@ -476,7 +533,7 @@ footer a{color:var(--s450)}
         <p class="hint">…of the couple's income. 67% is the standard equivalence
           scale. Housing, heating and council tax barely move.</p>
       </div>
-      <hr>
+      <h3>Tax-free cash</h3>
       <div class="chk"><input type="checkbox" id="pcls" checked>
         <span>Take 25% tax-free cash at the start</span></div>
       <div class="chk"><input type="checkbox" id="pclsSpend">
@@ -494,7 +551,7 @@ footer a{color:var(--s450)}
         it is spent, and where it sits changes the answer. Cash earns the rate
         set in the assumptions below; invested means it rides the same returns
         as the pension.</p>
-      <hr>
+      <h3>ISA and other tax-free savings</h3>
       <label><span class="lbl">ISA and other tax-free savings, now</span>
         <input type="number" id="isa" value="0" step="1000" min="0"></label>
       <p class="hint">Money you already hold outside a pension that is not taxed
@@ -516,6 +573,10 @@ footer a{color:var(--s450)}
 
   <!-- ============ RESULTS ============ -->
   <div id="results">
+    <div id="resHead">
+      <h2>What the model produced</h2>
+      <p class="hint" id="resHeadLine"></p>
+    </div>
     <div class="hero">
       <div class="stat"><span class="n" id="s_succ">—</span>
         <span class="l">of simulations funded the full income to age <span id="s_end">95</span></span></div>
@@ -580,6 +641,9 @@ footer a{color:var(--s450)}
       <p class="hint">Nothing here is a fact. These are the numbers that decide the
         answer, so they belong to you, not to us.</p>
 
+      <div class="agrid">
+      <section>
+      <h3>Investment return</h3>
       <label><span class="lbl">Return scenario</span>
         <select id="scen">
           <option value="lower">FCA lower — 2% nominal</option>
@@ -628,6 +692,9 @@ footer a{color:var(--s450)}
         set to "cash" does not pay it. The default is 0%, so no charge is
         assumed on your behalf.</p>
 
+      </section>
+      <section>
+      <h3>Tax and the State Pension</h3>
       <label><span class="lbl">Tax bands frozen for
         <span class="val" id="v_freeze">0 years</span></span>
         <input type="range" id="freeze" min="0" max="35" step="1" value="0"></label>
@@ -653,10 +720,24 @@ footer a{color:var(--s450)}
         2001&ndash;2025 that formula would have delivered <b>1.3&ndash;1.4% a year
         above inflation</b> (median 1.6%), the range covering two ways of
         measuring it. <a href="/findings#s10">How that is worked out</a>.</p>
-      <hr>
+      </section>
+      <section>
+      <h3>Method</h3>
       <label><span class="lbl">Simulations <span class="val" id="v_paths">4,000</span></span>
         <input type="range" id="paths" min="500" max="20000" step="500" value="4000"></label>
+      <p class="hint" id="mcNote"></p>
+      </section>
+      </div>
     </div>
+</div>
+
+<div class="readout" id="readout" aria-hidden="true">
+  <div class="in">
+    <span><span class="k" id="r_succ">—</span><span class="c">funded to <span id="r_end">95</span></span></span>
+    <span><span class="k" id="r_safe">—</span><span class="c">lasted in 9 of 10</span></span>
+    <span><span class="k" id="r_dep">—</span><span class="c">dry, when it does</span></span>
+    <a href="#results">Results &darr;</a>
+  </div>
 </div>
 
 <section id="faq" style="margin-top:40px">
@@ -1307,8 +1388,13 @@ function plotPx(){
 }
 /* Threshold sits just under the desktop figure's real width (about 672px
    inside the results panel) so the desktop chart is untouched. */
-const WIDE=660;                 // at or above this, the desktop chart is used
-const narrow = () => plotPx()<WIDE;
+/* One geometry, not two. The desktop chart used to be drawn into an 860-unit
+   box and displayed at 670px, so its 11px labels arrived on screen at 8.6px —
+   measured. The phone branch had always drawn at the pixel width it would
+   actually occupy, with 15px labels, and was much the more legible of the two.
+   This is the phone's geometry given to every width. MAXW only stops a very
+   wide window from stretching the type apart. 4 September 2026. */
+const MAXW=1200;
 
 /* Below that, the chart is drawn FLUID: one viewBox unit = one CSS pixel, so a
    15px axis label is 15 pixels on the glass at every screen size.
@@ -1320,14 +1406,7 @@ const narrow = () => plotPx()<WIDE;
    the band entirely, because there is nothing left to scale. */
 function chartBox(kind){
   const px=plotPx();
-  if(px>=WIDE){                 // unchanged desktop geometry
-    return kind==="fan"
-      ? {W:860,H:470,L:66,R:22,T:16,B:42,fs:11,fsLab:12,yT:6,xT:7,
-         yDx:10,xLabY:456,nar:false}
-      : {W:860,H:250,L:52,R:24,T:14,B:42,fs:11,fsLab:12,pts:14,dot:4,
-         yDx:9,xLabY:236,nar:false};
-  }
-  const W=Math.round(Math.max(300,Math.min(px,WIDE)));
+  const W=Math.round(Math.max(300,Math.min(px,MAXW)));
   const tight=W<430, fs=15;
   if(kind==="fan"){
     const H=Math.round(Math.max(300,Math.min(W*.86,470))), B=52;
@@ -1427,7 +1506,7 @@ function drawFan(r,P){
   band(q75,q25,"var(--s300)");
   let d="M"+X(0)+" "+Y(q50[0]);
   for(let y=1;y<=r.years;y++) d+="L"+X(y)+" "+Y(q50[y]);
-  s.appendChild(mk("path",{d,fill:"none",stroke:"var(--s650)","stroke-width":2,
+  s.appendChild(mk("path",{d,fill:"none",stroke:"var(--s650)","stroke-width":3,
     "stroke-linejoin":"round","clip-path":"url(#fanclip)"}));
   drawStartLine();
   // Describe the spread. State what the model produced; draw no conclusion
@@ -1520,7 +1599,7 @@ function drawCurve(P){
 
   let d="";
   pts.forEach((p,i)=> d+=(i?"L":"M")+X(p[0])+" "+Y(p[1]));
-  s.appendChild(mk("path",{d,fill:"none",stroke:"var(--s450)","stroke-width":2,
+  s.appendChild(mk("path",{d,fill:"none",stroke:"var(--s450)","stroke-width":2.5,
     "stroke-linejoin":"round","stroke-linecap":"round"}));
   pts.forEach(p=>{
     const label=`<b>${gbp(p[0])} after tax</b><br>lasts in ${(p[1]*100).toFixed(0)}% of runs`;
@@ -1540,7 +1619,9 @@ function drawCurve(P){
   if(P.target>=lo&&P.target<=hi){
     const cur=simulate(quick).successRate;
     s.appendChild(mk("circle",{cx:X(P.target),cy:Y(cur),r:dot+3,fill:"none",
-      stroke:"var(--warn)","stroke-width":2.5}));
+      stroke:"var(--surface-1)","stroke-width":5}));
+    s.appendChild(mk("circle",{cx:X(P.target),cy:Y(cur),r:dot+3,fill:"none",
+      stroke:"var(--ink)","stroke-width":2.5}));
   }
   niceTicks(hi,nar?3:5).filter(v=>v>=lo).forEach((v,i,a)=>{
     const edge = i===0 ? "start" : (i===a.length-1 ? "end" : "middle");
@@ -1674,8 +1755,6 @@ function run(){
   const r=simulate(P);
   if(!r){ $("s_succ").textContent="—"; return; }
   $("s_succ").textContent=(r.successRate*100).toFixed(0)+"%";
-  $("s_succ").style.color = r.successRate>=.9?"var(--good)"
-    : r.successRate>=.6?"var(--ink)":"var(--bad)";
   drawFan(r,P);
   const pts=drawCurve(P);
   const si=safeIncome(P,pts);
@@ -1685,7 +1764,82 @@ function run(){
     $("s_depsub").textContent=`worst 5%: age ${dep.worst}`; }
   else { $("s_dep").textContent="—"; $("s_depsub").textContent="the pot never ran out"; }
   assumptionsBlock(P,r);
+  resultsHeader(P);
+  samplingNote(P,r);
+  mirrorReadout(P);
 }
+
+/* What produced the numbers, read from the live controls. The simulation count
+   is a slider whose default is 4,000, so a fixed count written into this
+   sentence would be wrong for most runs. It says what the figures describe and
+   does not characterise them. */
+function resultsHeader(P){
+  const opt=$("scen").selectedOptions[0].textContent.trim();
+  const at = P.scen==="custom"
+    ? `a real return of <b>${(P.real*100).toFixed(2)}%</b> a year`
+    : `the <b>${opt.replace(/\s+/g," ")}</b> rate`;
+  const pots = P.couple
+    ? `two pots totalling <b>${gbp(P.pot+P.pot2)}</b>`
+    : `a <b>${gbp(P.pot)}</b> pot`;
+  $("resHeadLine").innerHTML =
+    `<b>${(+P.paths).toLocaleString("en-GB")}</b> simulations of ${pots} paying `
+  + `<b>${gbp(P.target)}</b> a year after tax from age <b>${P.retire}</b> to `
+  + `<b>${P.end}</b>, at ${at}. These describe the runs, not the future.`;
+}
+
+/* How much of the headline is the sample rather than the assumptions. The runs
+   are independent, so the share that funded the income is a binomial
+   proportion and its standard error is sqrt(p(1-p)/N); two of those is the
+   usual ~95% width. Stated because a figure quoted to the nearest whole point
+   from 4,000 draws is carrying about a point and a half of noise, and nothing
+   on the page said so. */
+function samplingNote(P,r){
+  const p=r.successRate, n=+P.paths;
+  const w=k=>(2*Math.sqrt(Math.max(p*(1-p),1e-9)/k)*100);
+  const big=20000;
+  $("mcNote").innerHTML = n>=big
+    ? `At ${n.toLocaleString("en-GB")} runs a different random draw would move the `
+      + `first figure by roughly <b>&plusmn;${w(n).toFixed(1)} points</b>. This is `
+      + `the sampling noise in the figure, not uncertainty about the assumptions.`
+    : `At ${n.toLocaleString("en-GB")} runs a different random draw would move the `
+      + `first figure by roughly <b>&plusmn;${w(n).toFixed(1)} points</b>; `
+      + `${big.toLocaleString("en-GB")} narrows that to about `
+      + `<b>&plusmn;${w(big).toFixed(1)}</b>. This is the sampling noise in the `
+      + `figure, not uncertainty about the assumptions.`;
+}
+
+/* The readout copies the tiles rather than recomputing anything, so the two can
+   never disagree. */
+function mirrorReadout(P){
+  $("r_succ").textContent=$("s_succ").textContent;
+  $("r_safe").textContent=$("s_safe").textContent;
+  $("r_dep").textContent =$("s_dep").textContent;
+  $("r_end").textContent =P.end;
+}
+
+/* Shown while a control that could move the numbers is on screen and the tiles
+   themselves are not. A plain scroll listener, not IntersectionObserver: the
+   observer reports only CHANGES in intersection, so arriving by an anchor jump
+   that skips the tiles entirely leaves it silent. */
+function readoutTick(){
+  const bar=$("readout"), hero=document.querySelector(".hero");
+  const inputs=[$("situationPanel"),$("assumpPanel")];
+  const h=hero.getBoundingClientRect();
+  // "On screen" means the panel has actually been scrolled into, not merely
+  // that its first pixel is in view: at the very top of the page the bar would
+  // otherwise open with three numbers before the visitor has read the notice
+  // saying what they are.
+  const anyInput=inputs.some(e=>{const r=e.getBoundingClientRect();
+    return r.bottom>80 && r.top<innerHeight*0.45;});
+  const on = innerWidth<=640 && anyInput && (h.bottom<8 || h.top>innerHeight-8);
+  bar.classList.toggle("on",on);
+  bar.setAttribute("aria-hidden", on?"false":"true");
+  document.body.classList.toggle("readout-on",on);
+}
+let rTick=false;
+addEventListener("scroll",()=>{ if(!rTick){ rTick=true;
+  requestAnimationFrame(()=>{ rTick=false; readoutTick(); }); } },{passive:true});
+addEventListener("resize",readoutTick);
 function schedule(){
   $("results").classList.add("busy");
   clearTimeout(pending);
@@ -1729,14 +1883,16 @@ $("theme").addEventListener("click",()=>{
   document.documentElement.setAttribute("data-theme", dark?"light":"dark");
 });
 
-/* The charts are drawn at two different geometries, so crossing the breakpoint
-   has to redraw them — rotating a phone otherwise leaves desktop proportions
-   squeezed into a narrow column, or the reverse. Only the crossing matters, so
-   ordinary address-bar resizes on mobile scroll cost nothing. */
-let wasNarrow=narrow();
+/* The chart is drawn at the pixel width it will occupy, so a WIDTH change has
+   to redraw it or the labels get scaled after all. Height changes do not touch
+   plotPx(), so the mobile address bar appearing and disappearing on scroll
+   still costs nothing — which was the point of the old breakpoint test. */
+readoutTick();
+let lastPlot=plotPx();
 addEventListener("resize",()=>{
-  if(narrow()===wasNarrow) return;
-  wasNarrow=narrow();
+  const px=plotPx();
+  if(Math.abs(px-lastPlot)<8) return;
+  lastPlot=px;
   schedule();
 });
 run();
