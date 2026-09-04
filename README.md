@@ -120,7 +120,7 @@ file, verify before relying on anything.
 |---|---|
 | [Regulatory position](docs/REGULATORY-POSITION.md) | Where the advice/guidance boundary sits and the rules this project is built by |
 | [Findings](docs/FINDINGS.md) | What the modelling actually showed, including results that contradicted the hypothesis |
-| [Findings, for a general reader](https://pensionstresstest.co.uk/findings.html) | The same material written for someone who is not a developer |
+| [Findings, for a general reader](https://pensionstresstest.co.uk/findings) | The same material written for someone who is not a developer |
 | [Data sourcing](docs/DATA-SOURCING.md) | Why there is no historical dataset, and the licensing behind that |
 
 ## Known limitations
