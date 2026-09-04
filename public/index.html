@@ -20,7 +20,7 @@
 <meta name="twitter:description" content="Free and independent. Every assumption visible and editable. Runs entirely in your browser — no data collected.">
 <meta name="twitter:image" content="https://pensionstresstest.co.uk/og.png">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-<meta property="og:site_name" content="Pension Stress Test">
+<meta property="og:site_name" content="UK pension stress test">
 <meta name="twitter:image:alt" content="UK pension stress test — of 20,000 simulated runs, 35 in 100 funded a £30,000 income from a £500,000 pot to age 95; half were dry by 87.">
 
 <script type="application/ld+json">
@@ -30,7 +30,7 @@
     {
       "@type": "Organization",
       "@id": "https://pensionstresstest.co.uk/#publisher",
-      "name": "Pension Stress Test",
+      "name": "UK pension stress test",
       "url": "https://pensionstresstest.co.uk/",
       "description": "An independent, non-commercial project. Not authorised or regulated by the Financial Conduct Authority.",
       "sameAs": [
@@ -61,24 +61,6 @@
       "caption": "UK pension stress test — of 20,000 simulated runs, 35 in 100 funded a £30,000 income from a £500,000 pot to age 95; half were dry by 87."
     },
     {
-      "@type": "BreadcrumbList",
-      "@id": "https://pensionstresstest.co.uk/#breadcrumb",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "UK pension stress test",
-          "item": "https://pensionstresstest.co.uk/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "What we found",
-          "item": "https://pensionstresstest.co.uk/findings"
-        }
-      ]
-    },
-    {
       "@type": "WebPage",
       "@id": "https://pensionstresstest.co.uk/#webpage",
       "url": "https://pensionstresstest.co.uk/",
@@ -89,12 +71,9 @@
       },
       "inLanguage": "en-GB",
       "datePublished": "2026-08-16",
-      "dateModified": "2026-09-03",
+      "dateModified": "2026-09-04",
       "primaryImageOfPage": {
         "@id": "https://pensionstresstest.co.uk/#primaryimage"
-      },
-      "breadcrumb": {
-        "@id": "https://pensionstresstest.co.uk/#breadcrumb"
       },
       "mainEntity": {
         "@id": "https://pensionstresstest.co.uk/#app"
@@ -111,9 +90,6 @@
         },
         {
           "@id": "https://pensionstresstest.co.uk/#e-fca"
-        },
-        {
-          "@id": "https://pensionstresstest.co.uk/#e-montecarlo"
         },
         {
           "@id": "https://pensionstresstest.co.uk/#e-isa"
@@ -149,7 +125,7 @@
         "Monte Carlo simulation of a drawdown pension, year by year to a chosen end age",
         "UK income tax for England, Wales and Northern Ireland and for Scotland, including the £100,000 personal allowance taper",
         "State Pension, single or couple, with two pots and two personal allowances",
-        "Tax-free cash taken as a lump sum or in stages",
+        "Tax-free cash taken as a 25% lump sum at the start or left in the pension, and when taken, held as cash or invested",
         "Every assumption visible and editable, including return, volatility and inflation",
         "Runs entirely in the browser; no account, no cookies, no data collected"
       ],
@@ -201,7 +177,7 @@
           "name": "Does it model UK income tax?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, for England/Wales/NI and Scotland. The basic-rate band is stacked on top of whatever personal allowance survives the £100,000 taper, which most calculators get wrong."
+            "text": "Yes, for England/Wales/NI and Scotland. The basic-rate band is a £37,700 width stacked on top of whatever personal allowance survives the £100,000 taper — not a fixed ceiling at £50,270. Build it from the published rate table instead and the tax comes out too low across the taper; our own first version did exactly that."
           }
         },
         {
@@ -252,14 +228,6 @@
       "name": "Financial Conduct Authority",
       "sameAs": [
         "https://en.wikipedia.org/wiki/Financial_Conduct_Authority"
-      ]
-    },
-    {
-      "@type": "Thing",
-      "@id": "https://pensionstresstest.co.uk/#e-montecarlo",
-      "name": "Monte Carlo method",
-      "sameAs": [
-        "https://en.wikipedia.org/wiki/Monte_Carlo_method"
       ]
     },
     {
@@ -647,7 +615,7 @@ footer a{color:var(--s450)}
           <option value="geo" selected>Geometric mean — what the pot compounds at</option>
           <option value="ari">Arithmetic mean — the average yearly return</option>
         </select></label>
-      <p class="hint">Most calculators never say which. Under one convention
+      <p class="hint">A percentage on its own does not say which. Under one convention
         volatility lowers the compound return; under the other it does not. The
         two give different answers.</p>
 
@@ -697,14 +665,14 @@ footer a{color:var(--s450)}
     <p><b>What is a pension stress test?</b> A simulation that runs many possible futures for a pension pot in drawdown, year by year, to show how often the income lasts to your chosen age and what happens when it does not.</p>
     <p><b>How long will my pension last?</b> It depends on the pot size, income target, returns, tax and inflation. Enter your figures to see the share of simulations that fund the full income to your end age.</p>
     <p><b>What return does it assume?</b> By default the FCA's projection rates (COBS 13 Annex 2): 5% nominal less 2% inflation, giving about 2.94% a year after inflation. The Handbook does not prescribe that 5% — it is the <i>highest intermediate rate</i> a firm may use for a personal pension, and the firm is expected to justify it against the actual investments. The lower and higher cases, 2% and 8%, are in the dropdown. You can also set your own.</p>
-    <p><b>Does it model UK income tax?</b> Yes, for England/Wales/NI and Scotland. The basic-rate band is stacked on top of whatever personal allowance survives the £100,000 taper, which most calculators get wrong.</p>
+    <p><b>Does it model UK income tax?</b> Yes, for England/Wales/NI and Scotland. The basic-rate band is a £37,700 width stacked on top of whatever personal allowance survives the £100,000 taper — not a fixed ceiling at £50,270. Build it from the published rate table instead and the tax comes out too low across the taper; our own first version did exactly that.</p>
     <p><b>Does it model a couple?</b> Yes. Two pots, two State Pensions and two personal allowances, with each year's withdrawal split between the pots to minimise the household tax bill.</p>
     <p><b>Is this financial advice?</b> No. It is not authorised or regulated by the FCA, gives no recommendation, and names no pension product, fund or provider.</p>
   </div>
 </section>
 
 <section id="more" class="src" style="margin-top:28px">
-  <p><b>What we found building this.</b> The 4% rule is a fact about American data — run the same test on British market history and the equivalent figure is 3.77%. A stated return is two different numbers, and no consumer calculator says which. And one decision about tax-free cash moves the answer further than any other choice on that page. <a href="/findings">Read the findings &rarr;</a></p>
+  <p><b>What we found building this.</b> The 4% rule is a fact about American data — run the same test on British market history and the equivalent figure is 3.77%. A stated return is two different numbers, and which one is meant is worth 12.3 percentage points here. And one decision about tax-free cash moves the answer further than any other choice on that page. <a href="/findings">Read the findings &rarr;</a></p>
 </section>
 
 <footer>
@@ -713,8 +681,8 @@ footer a{color:var(--s450)}
   target after income tax, and whatever is left earns that year's return. Returns
   are drawn from a lognormal distribution around the assumptions you set. Income
   tax is computed properly — the basic-rate band sits on top of whatever personal
-  allowance survives the £100,000 taper, which is the bit most calculators get
-  wrong, and Scottish rates are supported. For a couple, each year's withdrawal is
+  allowance survives the £100,000 taper rather than sitting at a fixed £50,270,
+  and Scottish rates are supported. For a couple, each year's withdrawal is
   split between the two pots so the household pays as little tax as legally
   possible — using both personal allowances before either partner reaches a
   higher rate.</p>
