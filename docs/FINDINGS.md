@@ -11,7 +11,7 @@ reproduced from the [public repository](https://github.com/kdownie/uk-pension-st
 §9 says how.
 
 A version of this written for a general reader is at
-[pensionstresstest.co.uk/findings.html](https://pensionstresstest.co.uk/findings.html).
+[pensionstresstest.co.uk/findings](https://pensionstresstest.co.uk/findings).
 
 ---
 
@@ -510,7 +510,7 @@ this project models tax rules instead of stochastic processes.
 ## 12. What the triple lock has actually been worth
 
 **The working for this lives on the public findings page, not here** — see
-[pensionstresstest.co.uk/findings.html#s10](https://pensionstresstest.co.uk/findings.html#s10),
+[pensionstresstest.co.uk/findings#s10](https://pensionstresstest.co.uk/findings#s10),
 which carries both constructions, the table of which leg bound, and the caveats.
 Restating it in two places is how §21e's family of bugs starts, so this entry is
 a pointer and a summary only.
