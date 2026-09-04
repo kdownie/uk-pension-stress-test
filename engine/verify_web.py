@@ -674,7 +674,14 @@ async def main():
         if not ok:
             fails.append("triple-lock figure differs between the two pages")
 
-        ok = "findings.html#s10" in _idx and 'id="s10"' in _fnd
+        # The href may or may not carry the .html extension — Cloudflare
+        # Pages serves /findings and 308s /findings.html to it, so the
+        # site declares the extensionless form. What must hold is that
+        # index.html links to the findings page anchored at s10 and that
+        # the anchor exists. Written against the URL SHAPE it was, this
+        # row went red for a spelling change — 10h. 4 September 2026.
+        ok = (re.search(r'href="/?findings(?:\.html)?#s10"', _idx) is not None
+              and 'id="s10"' in _fnd)
         print(f"  {'PASS' if ok else 'FAIL'}  "
               f"{'and index.html links to the working':<52}"
               f"{'linked' if ok else 'BROKEN ANCHOR'}")
